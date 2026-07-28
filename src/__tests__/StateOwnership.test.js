@@ -36,6 +36,76 @@ function createClassList(initial = []) {
   };
 }
 
+function installRadialDocument() {
+  const elements = new Map();
+
+  function registerMarkup(markup) {
+    const tagPattern = /<[\w-]+\b([^>]*\bid="([^"]+)"[^>]*)>([^<]*)/g;
+    for (const match of markup.matchAll(tagPattern)) {
+      const [, attributes, id, content] = match;
+      const width = attributes.match(/style="[^"]*\bwidth:\s*([^;"\s]+%)/)?.[1];
+      elements.set(id, {
+        textContent: content.trim(),
+        style: width ? { width } : {},
+        classList: createClassList(),
+      });
+    }
+  }
+
+  function createElement() {
+    const children = [];
+    let innerHTML = '';
+    const element = {
+      children,
+      classList: createClassList(),
+      style: {},
+      parentNode: null,
+      appendChild(child) {
+        child.parentNode = this;
+        children.push(child);
+        return child;
+      },
+      removeChild(child) {
+        const index = children.indexOf(child);
+        if (index >= 0) children.splice(index, 1);
+        child.parentNode = null;
+      },
+      setAttribute(name, value) {
+        this[name] = value;
+      },
+      addEventListener() {},
+      removeEventListener() {},
+      contains(target) {
+        return target === this || children.some((child) => child.contains?.(target));
+      },
+      querySelectorAll() {
+        return [];
+      },
+    };
+    Object.defineProperty(element, 'innerHTML', {
+      get: () => innerHTML,
+      set(value) {
+        innerHTML = value;
+        registerMarkup(value);
+      },
+    });
+    return element;
+  }
+
+  const body = createElement();
+  vi.stubGlobal('document', {
+    body,
+    createElement,
+    createElementNS: createElement,
+    getElementById: (id) => elements.get(id) ?? null,
+  });
+  vi.stubGlobal('window', {
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  return elements;
+}
+
 function createPlayer() {
   const camera = new THREE.PerspectiveCamera();
   const input = {
@@ -98,9 +168,74 @@ describe('Wind Child state ownership', () => {
     expect(Object.hasOwn(player, 'happiness')).toBe(false);
     expect(Object.hasOwn(player, 'energy')).toBe(false);
   });
+
+  it('uses player technical identity while preserving model click selection', () => {
+    const player = createPlayer();
+    player.deselect();
+    player.camera.userData.canvas = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+    };
+    player._raycaster.setFromCamera = vi.fn();
+    player._raycaster.intersectObject = vi.fn(() => [{ object: player.model }]);
+
+    const handled = player.handlePointerDown({ button: 0, clientX: 400, clientY: 300 });
+
+    expect(player.model.name).toBe('Player');
+    expect(player.model.userData).toMatchObject({
+      interactiveType: 'player',
+      isPlayer: true,
+    });
+    expect(Object.hasOwn(player.model.userData, 'isWindChild')).toBe(false);
+    expect(handled).toBe(true);
+    expect(player.selected).toBe(true);
+    expect(player.selectionRing.visible).toBe(true);
+  });
 });
 
 describe('RadialMenu state source', () => {
+  it('renders the Wind Child established defaults before the first telemetry refresh', () => {
+    const elements = installRadialDocument();
+    const menu = new RadialMenu({ windChild: null });
+
+    expect(elements.get('radial-power-val').textContent).toBe('5');
+    expect(elements.get('tooltip-hap-bar').style.width).toBe('80%');
+    expect(elements.get('tooltip-hap-val').textContent).toBe('80%');
+    expect(elements.get('tooltip-nrg-bar').style.width).toBe('90%');
+    expect(elements.get('tooltip-nrg-val').textContent).toBe('90%');
+
+    menu.destroy();
+  });
+
+  it('does not render a partial Wind Child telemetry object with missing attributes', () => {
+    const elements = new Map([
+      ['radial-power-val', { textContent: 'unchanged-power' }],
+      ['tooltip-hap-bar', { style: { width: 'unchanged-happiness' } }],
+      ['tooltip-hap-val', { textContent: 'unchanged-happiness' }],
+      ['tooltip-nrg-bar', { style: { width: 'unchanged-energy' } }],
+      ['tooltip-nrg-val', { textContent: 'unchanged-energy' }],
+    ]);
+    installDocument(elements);
+    const menu = {
+      game: {
+        windChild: {
+          powerLevel: 5,
+          energy: 90,
+        },
+      },
+      powerSelector: {
+        querySelectorAll: () => [],
+      },
+    };
+
+    RadialMenu.prototype._updateTelemetry.call(menu);
+
+    expect(elements.get('radial-power-val').textContent).toBe('unchanged-power');
+    expect(elements.get('tooltip-hap-bar').style.width).toBe('unchanged-happiness');
+    expect(elements.get('tooltip-hap-val').textContent).toBe('unchanged-happiness');
+    expect(elements.get('tooltip-nrg-bar').style.width).toBe('unchanged-energy');
+    expect(elements.get('tooltip-nrg-val').textContent).toBe('unchanged-energy');
+  });
+
   it('does not display player telemetry when the Wind Child is unavailable', () => {
     const elements = new Map([
       ['radial-power-val', { textContent: 'unchanged-power' }],

@@ -190,13 +190,13 @@ export class RadialMenu {
       <div class="tooltip-stats">
         <div class="stat-item">
           <span class="stat-label">Felicidade:</span>
-          <div class="stat-bar"><div class="stat-fill happiness" id="tooltip-hap-bar" style="width: 85%"></div></div>
-          <span class="stat-val" id="tooltip-hap-val">85%</span>
+          <div class="stat-bar"><div class="stat-fill happiness" id="tooltip-hap-bar" style="width: 80%"></div></div>
+          <span class="stat-val" id="tooltip-hap-val">80%</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Energia:</span>
-          <div class="stat-bar"><div class="stat-fill energy" id="tooltip-nrg-bar" style="width: 100%"></div></div>
-          <span class="stat-val" id="tooltip-nrg-val">100%</span>
+          <div class="stat-bar"><div class="stat-fill energy" id="tooltip-nrg-bar" style="width: 90%"></div></div>
+          <span class="stat-val" id="tooltip-nrg-val">90%</span>
         </div>
       </div>
     `;
@@ -282,9 +282,10 @@ export class RadialMenu {
     const nrgBar = document.getElementById('tooltip-nrg-bar');
     const nrgVal = document.getElementById('tooltip-nrg-val');
 
-    const pLvl = child.powerLevel !== undefined ? child.powerLevel : 1;
-    const hap = child.happiness !== undefined ? child.happiness : 85;
-    const nrg = child.energy !== undefined ? child.energy : 100;
+    const pLvl = child.powerLevel;
+    const hap = child.happiness;
+    const nrg = child.energy;
+    if (![pLvl, hap, nrg].every(Number.isFinite)) return;
 
     if (powerVal) powerVal.textContent = pLvl;
     if (hapBar) hapBar.style.width = `${hap}%`;

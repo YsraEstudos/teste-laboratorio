@@ -54,9 +54,9 @@ export class PlayerController {
 
   _buildCharacter() {
     this.model = new THREE.Group();
-    this.model.name = 'Wind Child';
-    this.model.userData.interactiveType = 'wind-child';
-    this.model.userData.isWindChild = true;
+    this.model.name = 'Player';
+    this.model.userData.interactiveType = 'player';
+    this.model.userData.isPlayer = true;
 
     // Soft Ground Shadow
     const shadow = new THREE.Mesh(
