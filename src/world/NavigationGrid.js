@@ -119,14 +119,95 @@ export class NavigationGrid {
     return Math.max(dx, dz) + (Math.SQRT2 - 1) * Math.min(dx, dz);
   }
 
+  _adjustmentReason(adjustedStart, adjustedTarget) {
+    if (adjustedStart && adjustedTarget) return 'start-and-target-adjusted';
+    if (adjustedStart) return 'start-adjusted';
+    if (adjustedTarget) return 'target-adjusted';
+    return null;
+  }
+
+  _result({
+    status,
+    reason,
+    waypoints = [],
+    requestedTarget = null,
+    resolvedTarget = null,
+    adjustedStart = false,
+    adjustedTarget = false
+  }) {
+    return {
+      status,
+      reason,
+      waypoints,
+      requestedTarget,
+      resolvedTarget,
+      adjustedStart,
+      adjustedTarget
+    };
+  }
+
   findPath(startX, startZ, targetX, targetZ) {
-    const start = this._nearestWalkable(this.worldToCell(startX, startZ));
-    const target = this._nearestWalkable(this.worldToCell(targetX, targetZ));
-    if (!start || !target) return [];
+    if (![startX, startZ, targetX, targetZ].every(Number.isFinite)) {
+      return this._result({
+        status: 'invalid',
+        reason: 'invalid-coordinates'
+      });
+    }
+
+    const requestedTarget = new THREE.Vector3(targetX, 0, targetZ);
+    const requestedStartCell = this.worldToCell(startX, startZ);
+    const requestedTargetCell = this.worldToCell(targetX, targetZ);
+    const start = this._nearestWalkable(requestedStartCell);
+    if (!start) {
+      return this._result({
+        status: 'invalid',
+        reason: 'start-unwalkable',
+        requestedTarget
+      });
+    }
+
+    const target = this._nearestWalkable(requestedTargetCell);
+    if (!target) {
+      return this._result({
+        status: 'invalid',
+        reason: 'target-unwalkable',
+        requestedTarget,
+        adjustedStart: start.x !== requestedStartCell.x || start.z !== requestedStartCell.z
+      });
+    }
+
+    const adjustedStart = (
+      start.x !== requestedStartCell.x ||
+      start.z !== requestedStartCell.z ||
+      startX < this.minX ||
+      startX >= this.maxX ||
+      startZ < this.minZ ||
+      startZ >= this.maxZ
+    );
+    const adjustedTarget = (
+      target.x !== requestedTargetCell.x ||
+      target.z !== requestedTargetCell.z ||
+      targetX < this.minX ||
+      targetX >= this.maxX ||
+      targetZ < this.minZ ||
+      targetZ >= this.maxZ
+    );
+    const resolvedTarget = this.cellToWorld(target.x, target.z);
+    const completeReason = this._adjustmentReason(adjustedStart, adjustedTarget);
 
     const startIndex = this._index(start.x, start.z);
     const targetIndex = this._index(target.x, target.z);
-    if (startIndex === targetIndex) return [this.cellToWorld(target.x, target.z)];
+    if (startIndex === targetIndex) {
+      return this._result({
+        status: 'complete',
+        reason: completeReason,
+        waypoints: [resolvedTarget.clone()],
+        requestedTarget,
+        resolvedTarget,
+        adjustedStart,
+        adjustedTarget
+      });
+    }
 
     const total = this.cols * this.rows;
     const costs = new Float32Array(total);
@@ -181,16 +262,16 @@ export class NavigationGrid {
     }
 
     const finalTargetIndex = found ? targetIndex : closestIndex;
-    if (finalTargetIndex === startIndex) return [];
-
     const cells = [];
-    let cursor = finalTargetIndex;
-    while (cursor !== -1) {
-      cells.push({ x: cursor % this.cols, z: Math.floor(cursor / this.cols) });
-      if (cursor === startIndex) break;
-      cursor = previous[cursor];
+    if (finalTargetIndex !== startIndex) {
+      let cursor = finalTargetIndex;
+      while (cursor !== -1) {
+        cells.push({ x: cursor % this.cols, z: Math.floor(cursor / this.cols) });
+        if (cursor === startIndex) break;
+        cursor = previous[cursor];
+      }
+      cells.reverse();
     }
-    cells.reverse();
 
     const waypoints = [];
     let lastDirection = null;
@@ -204,8 +285,19 @@ export class NavigationGrid {
       }
       lastDirection = direction;
     }
-    const finalCell = cells[cells.length - 1];
-    waypoints.push(this.cellToWorld(finalCell.x, finalCell.z));
-    return waypoints;
+    if (cells.length > 0) {
+      const finalCell = cells[cells.length - 1];
+      waypoints.push(this.cellToWorld(finalCell.x, finalCell.z));
+    }
+
+    return this._result({
+      status: found ? 'complete' : 'partial',
+      reason: found ? completeReason : 'target-unreachable',
+      waypoints,
+      requestedTarget,
+      resolvedTarget,
+      adjustedStart,
+      adjustedTarget
+    });
   }
 }

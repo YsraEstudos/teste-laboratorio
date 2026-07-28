@@ -51,6 +51,15 @@ export class WindChild {
     this.pathIndex = 0;
     this.navigation = null;
     this.walkSpeed = 4.2;
+    this.navigationRadius = 0.38;
+    this.navigationState = 'idle';
+    this.navigationReason = null;
+    this.navigationBlockedTime = 0;
+    this.navigationBlockTimeout = 0.5;
+    this.navigationMaxSubstep = 0.18;
+    this._navigationDirection = new THREE.Vector3();
+    this._navigationStart = new THREE.Vector3();
+    this._navigationAABB = new THREE.Box3();
 
     // Scene Graph Root
     this.model = new THREE.Group();
@@ -73,16 +82,26 @@ export class WindChild {
   }
 
   moveTo(x, z) {
-    if (this.navigation) {
-      const foundPath = this.navigation.findPath(this.position.x, this.position.z, x, z);
-      if (foundPath.length > 0) {
-        this.path = foundPath;
-        this.pathIndex = 0;
-      }
-    } else {
-      this.position.set(x, 0, z);
-      this.model.position.copy(this.position);
+    this.path.length = 0;
+    this.pathIndex = 0;
+    this.navigationBlockedTime = 0;
+
+    if (!this.navigation) {
+      this.navigationState = 'cancelled';
+      this.navigationReason = 'navigation-unavailable';
+      return;
     }
+
+    const result = this.navigation.findPath(this.position.x, this.position.z, x, z);
+    if (result.status !== 'complete' || result.waypoints.length === 0) {
+      this.navigationState = 'cancelled';
+      this.navigationReason = result.reason || 'invalid-path';
+      return;
+    }
+
+    this.path = result.waypoints.map((waypoint) => waypoint.clone());
+    this.navigationState = 'moving';
+    this.navigationReason = null;
   }
 
   // ==========================================
@@ -545,28 +564,7 @@ export class WindChild {
   update(delta, colliders = []) {
     this.time += delta;
 
-    // Process Movement Path
-    if (this.path && this.pathIndex < this.path.length) {
-      const target = this.path[this.pathIndex];
-      const dir = new THREE.Vector3().subVectors(target, this.position);
-      dir.y = 0;
-      const dist = dir.length();
-
-      if (dist < 0.22) {
-        this.pathIndex += 1;
-        if (this.pathIndex >= this.path.length) {
-          this.path.length = 0;
-        }
-      } else {
-        dir.normalize();
-        this.position.addScaledVector(dir, this.walkSpeed * delta);
-        const targetRot = Math.atan2(dir.x, dir.z);
-        let diff = targetRot - this.model.rotation.y;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        this.model.rotation.y += diff * Math.min(1, delta * 12);
-      }
-    }
+    this._updateNavigation(delta, colliders);
 
     this.model.position.copy(this.position);
 
@@ -592,6 +590,129 @@ export class WindChild {
 
     // 5. Update Wind Aura & Particles
     this._updateAuraParticles(delta, animSpeed);
+  }
+
+  _ensureNavigationScratch() {
+    this.navigationRadius ??= 0.38;
+    this.navigationBlockTimeout ??= 0.5;
+    this.navigationMaxSubstep ??= 0.18;
+    this.navigationBlockedTime ??= 0;
+    this._navigationDirection ??= new THREE.Vector3();
+    this._navigationStart ??= new THREE.Vector3();
+    this._navigationAABB ??= new THREE.Box3();
+  }
+
+  _updateNavigation(delta, colliders) {
+    if (!this.path || this.pathIndex >= this.path.length || delta <= 0) return;
+    this._ensureNavigationScratch();
+
+    let movementBudget = this.walkSpeed * delta;
+    let requestedMovement = false;
+    let madeProgress = false;
+
+    while (movementBudget > 0.0001 && this.pathIndex < this.path.length) {
+      const target = this.path[this.pathIndex];
+      const direction = this._navigationDirection.subVectors(target, this.position);
+      direction.y = 0;
+      const distance = direction.length();
+
+      if (distance <= 0.0001) {
+        this.position.x = target.x;
+        this.position.z = target.z;
+        this.pathIndex += 1;
+        continue;
+      }
+
+      requestedMovement = true;
+      direction.multiplyScalar(1 / distance);
+      const moveDistance = Math.min(distance, movementBudget);
+      this._navigationStart.copy(this.position);
+      this._moveWithCollisions(
+        direction.x * moveDistance,
+        direction.z * moveDistance,
+        colliders
+      );
+      const movedDistance = this.position.distanceTo(this._navigationStart);
+      madeProgress ||= movedDistance > 0.00001;
+      movementBudget -= moveDistance;
+
+      const targetRot = Math.atan2(direction.x, direction.z);
+      let diff = targetRot - this.model.rotation.y;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      this.model.rotation.y += diff * Math.min(1, delta * 12);
+
+      const remainingX = target.x - this.position.x;
+      const remainingZ = target.z - this.position.z;
+      if (remainingX * remainingX + remainingZ * remainingZ <= 0.0001 * 0.0001) {
+        this.position.x = target.x;
+        this.position.z = target.z;
+        this.pathIndex += 1;
+      } else if (movedDistance <= 0.00001) {
+        break;
+      }
+    }
+
+    if (this.pathIndex >= this.path.length) {
+      this.path.length = 0;
+      this.pathIndex = 0;
+      this.navigationBlockedTime = 0;
+      this.navigationState = 'complete';
+      this.navigationReason = 'arrived';
+      return;
+    }
+
+    if (requestedMovement && !madeProgress) {
+      this.navigationBlockedTime = Math.min(
+        this.navigationBlockTimeout,
+        this.navigationBlockedTime + delta
+      );
+      if (this.navigationBlockedTime >= this.navigationBlockTimeout) {
+        this.path.length = 0;
+        this.pathIndex = 0;
+        this.navigationState = 'cancelled';
+        this.navigationReason = 'blocked';
+      }
+    } else if (madeProgress) {
+      this.navigationBlockedTime = 0;
+    }
+  }
+
+  _moveWithCollisions(deltaX, deltaZ, colliders) {
+    const distance = Math.hypot(deltaX, deltaZ);
+    const substeps = Math.max(1, Math.ceil(distance / this.navigationMaxSubstep));
+    const stepX = deltaX / substeps;
+    const stepZ = deltaZ / substeps;
+
+    for (let step = 0; step < substeps; step += 1) {
+      this._moveNavigationAxis('x', stepX, colliders);
+      this._moveNavigationAxis('z', stepZ, colliders);
+    }
+  }
+
+  _moveNavigationAxis(axis, amount, colliders) {
+    if (Math.abs(amount) <= 0.000001) return;
+
+    const previous = this.position[axis];
+    this.position[axis] += amount;
+    this._navigationAABB.min.set(
+      this.position.x - this.navigationRadius,
+      this.position.y + 0.02,
+      this.position.z - this.navigationRadius
+    );
+    this._navigationAABB.max.set(
+      this.position.x + this.navigationRadius,
+      this.position.y + 1.8,
+      this.position.z + this.navigationRadius
+    );
+
+    for (const collider of colliders) {
+      if (!collider?.min || !collider?.max) continue;
+      if (collider.max.y <= this._navigationAABB.min.y || collider.min.y >= this._navigationAABB.max.y) continue;
+      if (!this._navigationAABB.intersectsBox(collider)) continue;
+      this.position[axis] = previous;
+      return;
+    }
   }
 
   _updateFloatingAndBreathing(animSpeed, happinessMult, energyMult) {

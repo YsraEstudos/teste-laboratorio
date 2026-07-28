@@ -323,15 +323,19 @@ export class PlayerController {
   }
 
   moveTo(x, z) {
-    let path = [];
-    if (this.navigation) path = this.navigation.findPath(this.position.x, this.position.z, x, z);
-    if (path.length > 0) {
-      this.path = path;
-      this.pathIndex = 0;
-      this.destination = path[path.length - 1].clone();
-      this.destinationMarker.position.copy(this.destination);
-      this.destinationMarker.visible = true;
-    }
+    this.path.length = 0;
+    this.pathIndex = 0;
+    this.destination = null;
+    this.destinationMarker.visible = false;
+
+    if (!this.navigation) return;
+    const result = this.navigation.findPath(this.position.x, this.position.z, x, z);
+    if (result.status !== 'complete' || result.waypoints.length === 0) return;
+
+    this.path = result.waypoints.map((waypoint) => waypoint.clone());
+    this.destination = this.path[this.path.length - 1].clone();
+    this.destinationMarker.position.copy(this.destination);
+    this.destinationMarker.visible = true;
   }
 
   _onWheel(event) {
