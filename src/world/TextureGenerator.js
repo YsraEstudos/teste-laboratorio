@@ -4,6 +4,9 @@ export class TextureGenerator {
   static _cache = new Map();
 
   static clearCache() {
+    for (const texture of this._cache.values()) {
+      if (typeof texture.dispose === 'function') texture.dispose();
+    }
     this._cache.clear();
   }
 
@@ -197,15 +200,17 @@ export class TextureGenerator {
    * @returns {THREE.CanvasTexture}
    */
   static createSignageTexture(text, options = {}) {
-    if (this._cache.has('createSignageTexture')) return this._cache.get('createSignageTexture');
     const width = options.width || 768;
     const height = options.height || 192;
     const background = options.background || '#10222d';
     const foreground = options.foreground || '#a9f0ff';
+    const border = options.border || '#4fd5e8';
+    const cacheKey = JSON.stringify({ text, width, height, background, foreground, border });
+    if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
     const texture = this._texture(width, height, (ctx) => {
       ctx.fillStyle = background;
       ctx.fillRect(0, 0, width, height);
-      ctx.strokeStyle = options.border || '#4fd5e8';
+      ctx.strokeStyle = border;
       ctx.lineWidth = 6;
       ctx.strokeRect(8, 8, width - 16, height - 16);
       ctx.fillStyle = 'rgba(92, 221, 238, 0.08)';
@@ -219,7 +224,7 @@ export class TextureGenerator {
       ctx.fillText(text, width / 2, height / 2 + 3);
       ctx.shadowBlur = 0;
     });
-    this._cache.set('createSignageTexture', texture);
+    this._cache.set(cacheKey, texture);
     return texture;
   }
 

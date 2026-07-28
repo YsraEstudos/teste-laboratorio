@@ -1,0 +1,66 @@
+// @ts-check
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TextureGenerator } from '../world/TextureGenerator.js';
+
+const drawingContext = {
+  fillRect: vi.fn(),
+  strokeRect: vi.fn(),
+  fillText: vi.fn(),
+};
+
+beforeEach(() => {
+  globalThis.document = {
+    createElement: () => ({
+      width: 0,
+      height: 0,
+      getContext: () => drawingContext,
+    }),
+  };
+  TextureGenerator.clearCache();
+});
+
+afterEach(() => {
+  TextureGenerator.clearCache();
+  vi.restoreAllMocks();
+});
+
+describe('TextureGenerator.createSignageTexture', () => {
+  it('keeps signage textures for different text separate', () => {
+    const entrance = TextureGenerator.createSignageTexture('ENTRADA');
+    const exit = TextureGenerator.createSignageTexture('SAÍDA');
+
+    expect(entrance).not.toBe(exit);
+  });
+
+  it('reuses the texture for an identical signage signature', () => {
+    expect(TextureGenerator.createSignageTexture('ENTRADA')).toBe(
+      TextureGenerator.createSignageTexture('ENTRADA'),
+    );
+  });
+
+  it('normalizes default signage options before caching', () => {
+    const defaultTexture = TextureGenerator.createSignageTexture('ENTRADA');
+    const explicitDefaults = TextureGenerator.createSignageTexture('ENTRADA', {
+      width: 768,
+      height: 192,
+      background: '#10222d',
+      foreground: '#a9f0ff',
+      border: '#4fd5e8',
+    });
+
+    expect(explicitDefaults).toBe(defaultTexture);
+  });
+
+  it('disposes every cached texture when clearing the cache', () => {
+    const entrance = TextureGenerator.createSignageTexture('ENTRADA');
+    const exit = TextureGenerator.createSignageTexture('SAÍDA');
+    const disposeEntrance = vi.spyOn(entrance, 'dispose');
+    const disposeExit = vi.spyOn(exit, 'dispose');
+
+    TextureGenerator.clearCache();
+
+    expect(disposeEntrance).toHaveBeenCalledOnce();
+    expect(disposeExit).toHaveBeenCalledOnce();
+  });
+});
