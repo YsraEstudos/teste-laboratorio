@@ -142,14 +142,29 @@ let documentTarget;
 let windowTarget;
 let game;
 
-function createKeyboardEvent(key) {
-  return {
+function createKeyboardEvent(key, target) {
+  const event = {
     type: 'keydown',
     key,
     code: key === ' ' ? 'Space' : key,
-    preventDefault: vi.fn(),
+    target,
+    defaultPrevented: false,
+    preventDefault: vi.fn(() => {
+      event.defaultPrevented = true;
+    }),
     stopPropagation: vi.fn(),
   };
+  return event;
+}
+
+function appendPowerButtons(menu) {
+  return Array.from({ length: 10 }, (_, index) => {
+    const button = createElement(documentTarget, 'button');
+    button.className = 'power-btn';
+    button.dataset.level = String(index + 1);
+    menu.powerSelector.appendChild(button);
+    return button;
+  });
 }
 
 beforeEach(() => {
@@ -241,6 +256,40 @@ describe('RadialMenu keyboard and accessibility contract', () => {
     windowTarget.dispatchEvent(enter);
     expect(alert).toHaveBeenCalledOnce();
     expect(menu.active).toBe(false);
+  });
+
+  it('opens the power submenu from its sector and focuses the active level button', () => {
+    const menu = new RadialMenu(game);
+    const powerButtons = appendPowerButtons(menu);
+    menu.show(640, 360);
+
+    windowTarget.dispatchEvent(createKeyboardEvent('ArrowRight'));
+    windowTarget.dispatchEvent(createKeyboardEvent('ArrowRight'));
+    windowTarget.dispatchEvent(createKeyboardEvent('Enter'));
+
+    expect(menu.powerSelector.classList.contains('hidden')).toBe(false);
+    expect(powerButtons[4].classList.contains('active')).toBe(true);
+    expect(documentTarget.activeElement).toBe(powerButtons[4]);
+  });
+
+  it('lets the focused power button use native Enter activation', () => {
+    const menu = new RadialMenu(game);
+    const powerButtons = appendPowerButtons(menu);
+    menu.show(640, 360);
+    windowTarget.dispatchEvent(createKeyboardEvent('ArrowRight'));
+    windowTarget.dispatchEvent(createKeyboardEvent('ArrowRight'));
+    windowTarget.dispatchEvent(createKeyboardEvent('Enter'));
+    const activePowerButton = powerButtons[4];
+
+    const enter = createKeyboardEvent('Enter', activePowerButton);
+    windowTarget.dispatchEvent(enter);
+    if (!enter.defaultPrevented) {
+      menu.powerSelector.dispatchEvent({ type: 'click', target: activePowerButton });
+    }
+
+    expect(enter.preventDefault).not.toHaveBeenCalled();
+    expect(enter.stopPropagation).not.toHaveBeenCalled();
+    expect(game.windChild.setPowerLevel).toHaveBeenCalledWith(5);
   });
 
   it('captures Escape, stops propagation, closes without pausing, and restores canvas focus', () => {

@@ -235,6 +235,8 @@ export class RadialMenu {
         return;
       }
 
+      if (e.target?.closest?.('.power-btn')) return;
+
       let nextIndex = null;
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         nextIndex = this.activeSectorIndex + 1;
@@ -384,7 +386,13 @@ export class RadialMenu {
 
   _onSectorClick(sector) {
     if (sector.id === 'power-level') {
+      const isOpening = this.powerSelector.classList.contains('hidden');
       this.powerSelector.classList.toggle('hidden');
+      if (isOpening) {
+        const powerButtons = [...this.powerSelector.querySelectorAll('.power-btn')];
+        const activeButton = powerButtons.find((button) => button.classList.contains('active')) ?? powerButtons[0];
+        activeButton?.focus();
+      }
       return;
     }
 
