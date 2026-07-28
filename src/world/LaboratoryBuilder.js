@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { getRoomAt, ROOMS } from './RoomData.js';
 import { TextureGenerator } from './TextureGenerator.js';
+import { DoorSystem } from './DoorSystem.js';
+import { TestObjectSystem } from './TestObjectSystem.js';
 
 export class LaboratoryBuilder {
   constructor(scene) {
@@ -16,8 +18,10 @@ export class LaboratoryBuilder {
     this.waterMeshes = [];
     this.lightMeshes = [];
     this.roofMeshes = [];
-    this.doors = [];
-    this.testObjects = [];
+    this.doorSystem = new DoorSystem();
+    this.doors = this.doorSystem.doors;
+    this.testObjectSystem = new TestObjectSystem();
+    this.testObjects = this.testObjectSystem.objects;
     this.time = 0;
 
     this._createMaterials();
@@ -403,7 +407,7 @@ export class LaboratoryBuilder {
     const boxB = new THREE.Box3().setFromObject(rightPost);
     this.colliders.push(boxA, boxB);
 
-    this.doors.push({
+    this.doorSystem.addDoor({
       x,
       y,
       z,
@@ -1027,7 +1031,7 @@ export class LaboratoryBuilder {
       mesh.matrixAutoUpdate = true;
       this._addOwnedObject(mesh);
 
-      this.testObjects.push({
+      this.testObjectSystem.addObject({
         mesh,
         position: mesh.position,
         velocity: new THREE.Vector3(),
@@ -1055,7 +1059,7 @@ export class LaboratoryBuilder {
       mesh.matrixAutoUpdate = true;
       this._addOwnedObject(mesh);
 
-      this.testObjects.push({
+      this.testObjectSystem.addObject({
         mesh,
         position: mesh.position,
         velocity: new THREE.Vector3(),
@@ -1080,7 +1084,7 @@ export class LaboratoryBuilder {
       mesh.matrixAutoUpdate = true;
       this._addOwnedObject(mesh);
 
-      this.testObjects.push({
+      this.testObjectSystem.addObject({
         mesh,
         position: mesh.position,
         velocity: new THREE.Vector3(),
@@ -1106,7 +1110,7 @@ export class LaboratoryBuilder {
       mesh.matrixAutoUpdate = true;
       this._addOwnedObject(mesh);
 
-      this.testObjects.push({
+      this.testObjectSystem.addObject({
         mesh,
         position: mesh.position,
         velocity: new THREE.Vector3(),
@@ -1161,94 +1165,8 @@ export class LaboratoryBuilder {
     }
 
     if (playerPos) {
-      for (const door of this.doors) {
-        const dx = playerPos.x - door.x;
-        const dz = playerPos.z - door.z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
-        door.isOpen = dist < 3.4;
-
-        const targetOpen = door.isOpen ? 1 : 0;
-        const speed = door.isOpen ? 4.8 : 3.5;
-        door.openAmount += (targetOpen - door.openAmount) * Math.min(1, delta * speed);
-
-        const slideDistance = door.width * 0.44 * door.openAmount;
-        door.leftPanel.position.x = door.baseLeftX - slideDistance;
-        door.rightPanel.position.x = door.baseRightX + slideDistance;
-
-        if (door.openAmount > 0.25) {
-          door.indicatorMat.color.setHex(0x54f08c);
-          door.indicatorMat.emissive.setHex(0x32c462);
-          door.indicatorMat.emissiveIntensity = 2.4;
-        } else {
-          door.indicatorMat.color.setHex(0x49d7e8);
-          door.indicatorMat.emissive.setHex(0x24a7c0);
-          door.indicatorMat.emissiveIntensity = 1.0;
-        }
-      }
-
-      if (windSystem) windSystem.applyToObjects(this.testObjects, delta);
-
-      // Physics Update for Test Objects (Paper sheets, Tree leaves, Cardboard boxes, Heavy Rocks)
-      for (const obj of this.testObjects) {
-        if (obj.velocity.lengthSq() > 0.001) {
-          obj.mesh.position.x += obj.velocity.x * delta;
-          obj.mesh.position.z += obj.velocity.z * delta;
-
-          if (obj.velocity.y) {
-            obj.mesh.position.y += obj.velocity.y * delta;
-            obj.velocity.y -= delta * 6.5; // gravity settling
-            if (obj.mesh.position.y < 0.04) {
-              obj.mesh.position.y = 0.04;
-              obj.velocity.y = 0;
-            }
-          }
-
-          // Realistic tumbling and rolling rotation based on object type
-          if (obj.type === 'pedra') {
-            obj.mesh.rotation.x += obj.velocity.z * delta * 1.8;
-            obj.mesh.rotation.z -= obj.velocity.x * delta * 1.8;
-          } else if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
-            obj.mesh.rotation.z += (obj.velocity.x + obj.velocity.z) * delta * 4.0;
-            obj.mesh.rotation.x += obj.velocity.z * delta * 3.0;
-          } else {
-            obj.mesh.rotation.y += (obj.velocity.x + obj.velocity.z) * delta * 2.5;
-            obj.mesh.rotation.x += obj.velocity.z * delta * 1.2;
-          }
-
-          // Friction deceleration
-          const friction = Math.exp(-3.8 * delta);
-          obj.velocity.multiplyScalar(friction);
-
-          // Room Wall Boundary Collisions (-11.2 <= X <= 11.2, -63.2 <= Z <= -46.5)
-          // When light leaves/paper hit walls, they climb UP the wall ("subir a parede")!
-          if (obj.mesh.position.x < -11.2) {
-            obj.mesh.position.x = -11.2;
-            obj.velocity.x *= -0.4;
-            if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
-              if (!obj.velocity.y) obj.velocity.y = 0;
-              obj.velocity.y += 3.8; // Wall updraft lift!
-            }
-          } else if (obj.mesh.position.x > 11.2) {
-            obj.mesh.position.x = 11.2;
-            obj.velocity.x *= -0.4;
-            if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
-              if (!obj.velocity.y) obj.velocity.y = 0;
-              obj.velocity.y += 3.8; // Wall updraft lift!
-            }
-          }
-          if (obj.mesh.position.z < -63.2) {
-            obj.mesh.position.z = -63.2;
-            obj.velocity.z *= -0.4;
-            if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
-              if (!obj.velocity.y) obj.velocity.y = 0;
-              obj.velocity.y += 3.8; // Wall updraft lift!
-            }
-          } else if (obj.mesh.position.z > -46.5 && Math.abs(obj.mesh.position.x) > 2.8) {
-            obj.mesh.position.z = -46.5;
-            obj.velocity.z *= -0.4;
-          }
-        }
-      }
+      this.doorSystem.update(delta, playerPos);
+      this.testObjectSystem.update(delta, windSystem);
     }
   }
 
@@ -1264,6 +1182,8 @@ export class LaboratoryBuilder {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.doorSystem.dispose();
+    this.testObjectSystem.dispose();
     this.root.removeFromParent();
     this.ownedGeometries.forEach((geometry) => geometry.dispose());
     this.ownedMaterials.forEach((material) => material.dispose());
@@ -1271,6 +1191,5 @@ export class LaboratoryBuilder {
     this.ownedGeometries.clear();
     this.ownedMaterials.clear();
     this.ownedTextures.clear();
-    this.testObjects = [];
   }
 }

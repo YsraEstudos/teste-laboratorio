@@ -34,6 +34,8 @@ describe('LaboratoryBuilder.dispose', () => {
     expect(builder.root).toBeInstanceOf(THREE.Group);
     expect(builder.root.parent).toBe(scene);
     expect(externalMesh.parent).toBe(scene);
+    expect(builder.doorSystem.doors).toBe(builder.doors);
+    expect(builder.testObjectSystem.objects).toBe(builder.testObjects);
 
     builder.dispose();
     builder.dispose();
@@ -46,5 +48,8 @@ describe('LaboratoryBuilder.dispose', () => {
     expect(sharedTextureDispose).not.toHaveBeenCalled();
     expect(externalGeometryDispose).not.toHaveBeenCalled();
     expect(externalMaterialDispose).not.toHaveBeenCalled();
+    expect(builder.doorSystem.disposed).toBe(true);
+    expect(builder.testObjectSystem.disposed).toBe(true);
+    expect(builder.testObjects).toHaveLength(0);
   });
 });
