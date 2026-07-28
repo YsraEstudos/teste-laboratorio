@@ -4,8 +4,14 @@ import { TextureGenerator } from './TextureGenerator.js';
 
 export class LaboratoryBuilder {
   constructor(scene) {
-    this.unitBoxGeo = new THREE.BoxGeometry(1, 1, 1);
     this.scene = scene;
+    this.root = new THREE.Group();
+    this.ownedGeometries = new Set();
+    this.ownedMaterials = new Set();
+    this.ownedTextures = new Set();
+    this.disposed = false;
+    this.scene.add(this.root);
+    this.unitBoxGeo = this._ownGeometry(new THREE.BoxGeometry(1, 1, 1));
     this.colliders = [];
     this.waterMeshes = [];
     this.lightMeshes = [];
@@ -26,8 +32,36 @@ export class LaboratoryBuilder {
     this.rooms = ROOMS;
   }
 
+  _ownGeometry(geometry) {
+    this.ownedGeometries.add(geometry);
+    return geometry;
+  }
+
+  _ownMaterial(material) {
+    this.ownedMaterials.add(material);
+    return material;
+  }
+
+  _ownTexture(texture) {
+    this.ownedTextures.add(texture);
+    return texture;
+  }
+
+  _addOwnedObject(object) {
+    object.traverse((child) => {
+      if (child.geometry) this._ownGeometry(child.geometry);
+      if (Array.isArray(child.material)) {
+        child.material.forEach((material) => this._ownMaterial(material));
+      } else if (child.material) {
+        this._ownMaterial(child.material);
+      }
+    });
+    this.root.add(object);
+    return object;
+  }
+
   _cloneTexture(texture, repeatX = 1, repeatY = 1) {
-    const clone = texture.clone();
+    const clone = this._ownTexture(texture.clone());
     clone.repeat.set(repeatX, repeatY);
     clone.needsUpdate = true;
     return clone;
@@ -203,6 +237,7 @@ export class LaboratoryBuilder {
         metalness: 0.78
       })
     };
+    Object.values(this.materials).forEach((material) => this._ownMaterial(material));
 
     this.textures = {
       labSign: TextureGenerator.createSignageTexture('LABORATORIO', { foreground: '#a9f0ff' }),
@@ -236,7 +271,7 @@ export class LaboratoryBuilder {
     mesh.receiveShadow = true;
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
-    this.scene.add(mesh);
+    this._addOwnedObject(mesh);
     if (collider) this.colliders.push(new THREE.Box3().setFromObject(mesh));
     return mesh;
   }
@@ -249,7 +284,7 @@ export class LaboratoryBuilder {
     mesh.receiveShadow = true;
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
-    this.scene.add(mesh);
+    this._addOwnedObject(mesh);
     return mesh;
   }
 
@@ -303,14 +338,14 @@ export class LaboratoryBuilder {
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
     mesh.userData.label = text;
-    this.scene.add(mesh);
+    this._addOwnedObject(mesh);
     return mesh;
   }
 
   _addPointLight(x, y, z, color, intensity, distance) {
     const light = new THREE.PointLight(color, intensity, distance, 2);
     light.position.set(x, y, z);
-    this.scene.add(light);
+    this._addOwnedObject(light);
     return light;
   }
 
@@ -356,7 +391,7 @@ export class LaboratoryBuilder {
     rightPanel.add(rightTrim);
 
     group.add(leftPost, rightPost, topBeam, scanner, indicator, leftPanel, rightPanel);
-    this.scene.add(group);
+    this._addOwnedObject(group);
 
     const boxA = new THREE.Box3().setFromObject(leftPost);
     const boxB = new THREE.Box3().setFromObject(rightPost);
@@ -515,7 +550,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
     const box = new THREE.Box3().setFromObject(group);
     this.colliders.push(box);
   }
@@ -541,7 +576,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
   }
 
   _buildMannequinWing() {
@@ -610,7 +645,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
 
     const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.22, 20), this.materials.darkMetal);
     pedestal.position.set(x, 0.11, z);
@@ -618,7 +653,7 @@ export class LaboratoryBuilder {
     pedestal.receiveShadow = true;
     pedestal.matrixAutoUpdate = false;
     pedestal.updateMatrix();
-    this.scene.add(pedestal);
+    this._addOwnedObject(pedestal);
     this.colliders.push(new THREE.Box3(new THREE.Vector3(x - 0.9, 0, z - 0.9), new THREE.Vector3(x + 0.9, 0.22, z + 0.9)));
     this.colliders.push(new THREE.Box3(new THREE.Vector3(x - 0.62, 0.22, z - 0.5), new THREE.Vector3(x + 0.62, 2.7, z + 0.5)));
 
@@ -628,7 +663,7 @@ export class LaboratoryBuilder {
       ringMesh.position.set(x, 0.26, z);
       ringMesh.matrixAutoUpdate = false;
       ringMesh.updateMatrix();
-      this.scene.add(ringMesh);
+      this._addOwnedObject(ringMesh);
     }
   }
 
@@ -693,7 +728,7 @@ export class LaboratoryBuilder {
     mesh.computeBoundingSphere();
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
-    this.scene.add(mesh);
+    this._addOwnedObject(mesh);
     return mesh;
   }
 
@@ -717,7 +752,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
     this.colliders.push(new THREE.Box3().setFromObject(group));
   }
 
@@ -742,7 +777,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
     this.colliders.push(new THREE.Box3().setFromObject(group));
   }
 
@@ -778,7 +813,7 @@ export class LaboratoryBuilder {
     pond.receiveShadow = true;
     pond.matrixAutoUpdate = false;
     pond.updateMatrix();
-    this.scene.add(pond);
+    this._addOwnedObject(pond);
     this.waterMeshes.push(pond);
     this._addBox(4.8, 0.05, 0.14, 35.2, 0.04, -37.7, this.materials.wood, false);
   }
@@ -803,7 +838,7 @@ export class LaboratoryBuilder {
         child.receiveShadow = true;
       }
     });
-    this.scene.add(group);
+    this._addOwnedObject(group);
     const r = 0.6 * scale;
     this.colliders.push(new THREE.Box3(new THREE.Vector3(x - r, 0, z - r), new THREE.Vector3(x + r, 2.8 * scale, z + r)));
   }
@@ -871,9 +906,9 @@ export class LaboratoryBuilder {
     const rockMat = new THREE.MeshStandardMaterial({ map: rockTex, roughness: 0.9, metalness: 0.1 });
 
     const paperTex = TextureGenerator.createPaperSheetTexture();
-    const paperMat = new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.65 });
+    const paperMat = this._ownMaterial(new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.65 }));
     const leafTex = TextureGenerator.createTreeLeafTexture();
-    const leafMat = new THREE.MeshStandardMaterial({ map: leafTex, side: THREE.DoubleSide, alphaTest: 0.15, roughness: 0.5 });
+    const leafMat = this._ownMaterial(new THREE.MeshStandardMaterial({ map: leafTex, side: THREE.DoubleSide, alphaTest: 0.15, roughness: 0.5 }));
 
     // 1. Loose Paper Sheets (Ultra Light - Level 1 Target) - Positioned cleanly on floor (Y = 0.04)
     const paperPositions = [
@@ -888,7 +923,7 @@ export class LaboratoryBuilder {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = true;
-      this.scene.add(mesh);
+      this._addOwnedObject(mesh);
 
       this.testObjects.push({
         mesh,
@@ -913,7 +948,7 @@ export class LaboratoryBuilder {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = true;
-      this.scene.add(mesh);
+      this._addOwnedObject(mesh);
 
       this.testObjects.push({
         mesh,
@@ -936,7 +971,7 @@ export class LaboratoryBuilder {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = true;
-      this.scene.add(mesh);
+      this._addOwnedObject(mesh);
 
       this.testObjects.push({
         mesh,
@@ -960,7 +995,7 @@ export class LaboratoryBuilder {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = true;
-      this.scene.add(mesh);
+      this._addOwnedObject(mesh);
 
       this.testObjects.push({
         mesh,
@@ -982,13 +1017,13 @@ export class LaboratoryBuilder {
     emblem.position.set(0, 0.035, -14);
     emblem.matrixAutoUpdate = false;
     emblem.updateMatrix();
-    this.scene.add(emblem);
+    this._addOwnedObject(emblem);
     const core = new THREE.Mesh(new THREE.CircleGeometry(1.65, 32), this.materials.darkMetal);
     core.rotation.x = -Math.PI / 2;
     core.position.set(0, 0.025, -14);
     core.matrixAutoUpdate = false;
     core.updateMatrix();
-    this.scene.add(core);
+    this._addOwnedObject(core);
 
     const hubLines = [
       [0, -10.7, 0.04, 6.5, this.materials.amber],
@@ -1118,12 +1153,15 @@ export class LaboratoryBuilder {
   }
 
   dispose() {
-    this.scene.traverse((child) => {
-      if (child.isMesh && (child.geometry === this.unitBoxGeo || this.materials === child.material)) {
-        if (child.geometry && child.geometry !== this.unitBoxGeo) child.geometry.dispose();
-      }
-    });
-    if (this.unitBoxGeo) this.unitBoxGeo.dispose();
+    if (this.disposed) return;
+    this.disposed = true;
+    this.root.removeFromParent();
+    this.ownedGeometries.forEach((geometry) => geometry.dispose());
+    this.ownedMaterials.forEach((material) => material.dispose());
+    this.ownedTextures.forEach((texture) => texture.dispose());
+    this.ownedGeometries.clear();
+    this.ownedMaterials.clear();
+    this.ownedTextures.clear();
     this.testObjects = [];
   }
 }
