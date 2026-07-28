@@ -83,3 +83,13 @@
 - `b0327f6`: runtime de portas e objetos de teste extraído para `DoorSystem` e `TestObjectSystem`, com aliases compatíveis no builder e dispose idempotente. A criação de arquitetura/decoração e colliders ainda permanece no `LaboratoryBuilder` por segurança; a extração foi incremental e sem alteração visual.
 - Revisão do menu encontrou P2: o handler global de Enter/Espaço pode interceptar `.power-btn` do submenu de nível de poder. Correção TDD foi encaminhada ao agente do menu antes do gate final.
 - Decisão do projeto: Node.js 24 é requisito oficial. `package.json`, `package-lock.json`, `.nvmrc`, CI e README devem permanecer alinhados em Node 24.
+
+### Gate final executado em 2026-07-28
+
+- Node efetivo: `v24.18.0` / npm `11.10.1`.
+- `npm run lint`: aprovado.
+- `npm run format:check`: aprovado.
+- `npm test`: 15 arquivos, 84 testes aprovados.
+- `npm run build`: aprovado, 28 módulos transformados.
+- `npm run test:e2e`: 2/2 aprovados; smoke WebGL com `gl.getError() === gl.NO_ERROR` e runtime guard de `console.error`.
+- `git diff --check`: limpo; branch sem alterações pendentes após o registro.
