@@ -5,7 +5,7 @@ acompanha a Wind Child e consulta uma planta tática das salas.
 
 ## Requisitos
 
-- Node.js 20 ou mais recente;
+- Node.js 24 ou mais recente;
 - npm (o lockfile é a fonte das versões instaladas);
 - navegador moderno com WebGL 2 habilitado;
 - aceleração gráfica ativa ou uma implementação WebGL por software.
