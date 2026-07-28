@@ -30,7 +30,7 @@ export default [
     },
   },
   {
-    files: ['src/__tests__/**/*.js', '*.config.js', 'eslint.config.js'],
+    files: ['src/__tests__/**/*.js', 'e2e/**/*.js', '*.config.js', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
