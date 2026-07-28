@@ -76,7 +76,7 @@ vi.mock('../entities/WindChild.js', () => ({
           return this;
         },
         clone() {
-          return { x: this.x, y: this.y, z: this.z };
+          return { x: this.x, y: this.y, z: this.z, clone: this.clone };
         },
         distanceTo(other) {
           return Math.hypot(this.x - other.x, this.y - other.y, this.z - other.z);
@@ -278,6 +278,11 @@ function runNextAnimationFrame() {
   return id;
 }
 
+function runAnimationFrames(game, count, delta = 0.05) {
+  game.clock.getDelta = vi.fn(() => delta);
+  for (let index = 0; index < count; index += 1) runNextAnimationFrame();
+}
+
 function nearbyTestObject() {
   return {
     type: 'folha_papel',
@@ -286,11 +291,13 @@ function nearbyTestObject() {
       y: 0,
       z: 4.5,
       clone() {
-        return { x: this.x, y: this.y, z: this.z };
+        return { x: this.x, y: this.y, z: this.z, clone: this.clone };
       },
     },
     velocity: {
+      x: 0,
       y: 0,
+      z: 0,
       copy: vi.fn(function (vector) {
         this.x = vector.x;
         this.y = vector.y;
@@ -383,42 +390,146 @@ describe('Game lifecycle', () => {
     expect(game.hud.hidePause).not.toHaveBeenCalled();
   });
 
-  it('cancels a pending wind blast and resets charging when paused', () => {
+  it('cancels a pending wind blast without energy cost when paused', () => {
     const game = createGame();
     game.isPlaying = true;
     game.lab.testObjects = [nearbyTestObject()];
 
     game.triggerWindBlastOnObjects();
-    game.pause();
-    vi.runAllTimers();
+    expect(game.windAbility.state).toBe('charging');
 
+    game.pause();
+    game.windAbility.update(1);
+
+    expect(game.windAbility.state).toBe('ready');
+    expect(game.windChild.energy).toBe(100);
     expect(game.windChild.stopCharging).toHaveBeenCalledOnce();
     expect(game.windChild.releaseWindBlast).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('cancels a pending wind blast and resets charging when destroyed', () => {
+  it('disposes a pending wind blast without releasing it when destroyed', () => {
     const game = createGame();
     game.lab.testObjects = [nearbyTestObject()];
 
     game.triggerWindBlastOnObjects();
     game.destroy();
-    vi.runAllTimers();
 
+    expect(game.windAbility.disposed).toBe(true);
     expect(game.windChild.stopCharging).toHaveBeenCalledOnce();
     expect(game.windChild.releaseWindBlast).not.toHaveBeenCalled();
+    expect(game.windChild.energy).toBe(100);
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('allows only one pending wind blast charge at a time', () => {
+  it('allows only one frame-driven wind blast charge at a time', () => {
     const game = createGame();
     game.lab.testObjects = [nearbyTestObject()];
 
     game.triggerWindBlastOnObjects();
     game.triggerWindBlastOnObjects();
 
+    expect(game.windAbility.state).toBe('charging');
     expect(game.windChild.startCharging).toHaveBeenCalledOnce();
-    expect(vi.getTimerCount()).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('releases against the target, positions, and attributes selected at charge start', () => {
+    const game = createGame();
+    const selectedTarget = nearbyTestObject();
+    game.lab.testObjects = [selectedTarget];
+    game.isPlaying = true;
+
+    game.triggerWindBlastOnObjects();
+    game.windChild.position.set(100, 0, 100);
+    selectedTarget.position.x = 200;
+    selectedTarget.position.z = 200;
+    game.windChild.powerLevel = 10;
+    game.windChild.happiness = 0;
+    game.windChild.energy = 50;
+
+    runAnimationFrames(game, 14);
+
+    expect(game.windFX.triggerWindBlast).toHaveBeenCalledOnce();
+    const [releasedOrigin, releasedTarget, releasedPower] = game.windFX.triggerWindBlast.mock.calls[0];
+    expect(releasedOrigin).toMatchObject({ x: 3.2, y: 0, z: 4.5 });
+    expect(releasedTarget).toMatchObject({ x: 4, y: 0, z: 4.5 });
+    expect(releasedPower).toBe(1);
+    expect(Object.isFrozen(releasedOrigin)).toBe(true);
+    expect(Object.isFrozen(releasedTarget)).toBe(true);
+    expect(selectedTarget.velocity.x).toBeCloseTo(5.7);
+    expect(selectedTarget.velocity.y).toBeCloseTo(4.3);
+    expect(game.windChild.energy).toBe(40);
+  });
+
+  it('keeps visual release and replacement blast velocity before additive ambient wind', () => {
+    const game = createGame();
+    const events = [];
+    const selectedTarget = nearbyTestObject();
+    selectedTarget.velocity.x = 50;
+    selectedTarget.velocity.y = 50;
+    selectedTarget.velocity.z = 50;
+    selectedTarget.velocity.copy.mockImplementation(function (vector) {
+      events.push('velocity-copy');
+      this.x = vector.x;
+      this.y = vector.y;
+      this.z = vector.z;
+      return this;
+    });
+    selectedTarget.velocity.multiplyScalar.mockImplementation(function (scalar) {
+      events.push('velocity-scale');
+      this.x *= scalar;
+      this.y *= scalar;
+      this.z *= scalar;
+      return this;
+    });
+    game.windChild.stopCharging.mockImplementation(() => events.push('stop-charging'));
+    game.windChild.releaseWindBlast.mockImplementation(() => events.push('release-visual'));
+    game.windFX.triggerWindBlast.mockImplementation(() => events.push('blast-fx'));
+    game.lab.update.mockImplementation(() => {
+      if (game.windAbility.state !== 'cooldown') return;
+      events.push('ambient-add');
+      selectedTarget.velocity.x += 2;
+    });
+    game.lab.testObjects = [selectedTarget];
+    game.isPlaying = true;
+
+    game.triggerWindBlastOnObjects();
+    runAnimationFrames(game, 13);
+    events.length = 0;
+    runAnimationFrames(game, 1);
+
+    expect(events).toEqual([
+      'stop-charging',
+      'release-visual',
+      'blast-fx',
+      'velocity-copy',
+      'velocity-scale',
+      'ambient-add',
+    ]);
+    expect(selectedTarget.velocity.x).toBeCloseTo(7.7);
+    expect(selectedTarget.velocity.y).toBeCloseTo(4.3);
+  });
+
+  it('freezes the wind blast cooldown while the Game is paused', () => {
+    const game = createGame();
+    game.lab.testObjects = [nearbyTestObject()];
+    game.isPlaying = true;
+
+    game.triggerWindBlastOnObjects();
+    runAnimationFrames(game, 14);
+    expect(game.windAbility.state).toBe('cooldown');
+
+    game.pause();
+    game.windAbility.update(10);
+    expect(game.windAbility.state).toBe('cooldown');
+
+    game.resume();
+    runAnimationFrames(game, 14);
+    expect(game.windAbility.state).toBe('cooldown');
+
+    runAnimationFrames(game, 1);
+    expect(game.windAbility.state).toBe('ready');
   });
 
   it('recreates the game with exactly one active resize listener', () => {
