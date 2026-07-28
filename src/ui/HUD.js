@@ -75,7 +75,7 @@ export class HUD {
   /**
    * Updates HUD elements.
    */
-  update() {
+  update(delta = 0) {
     const x = this.game.player.position.x;
     const z = this.game.player.position.z;
     const name = this.game.lab.getRoomNameAt(x, z) || '';
@@ -92,7 +92,7 @@ export class HUD {
     }
 
     if (this.game.isPlaying) {
-      this._hintTimer += 0.016;
+      this._hintTimer += delta;
       if (this._hintTimer > 6) {
         this.controlsHint.classList.add('hidden');
       }

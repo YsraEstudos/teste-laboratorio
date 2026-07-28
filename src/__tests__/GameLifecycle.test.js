@@ -447,6 +447,16 @@ describe('Game lifecycle', () => {
     expect(animationFrames.size).toBe(0);
   });
 
+  it('forwards the real frame delta to the HUD', () => {
+    const game = createGame();
+    game.isPlaying = true;
+    game.clock.getDelta = vi.fn(() => 0.03);
+
+    runNextAnimationFrame();
+
+    expect(game.hud.update).toHaveBeenCalledWith(0.03);
+  });
+
   it('ignores start after destroy', () => {
     const game = createGame();
 
