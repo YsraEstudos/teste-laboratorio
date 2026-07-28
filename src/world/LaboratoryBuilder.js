@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getRoomAt, ROOMS } from './RoomData.js';
 import { TextureGenerator } from './TextureGenerator.js';
 
 export class LaboratoryBuilder {
@@ -22,15 +23,7 @@ export class LaboratoryBuilder {
     this._buildTestingRoom();
     this._buildAtmosphere();
 
-    this.rooms = [
-      { name: 'SALA DE TESTES', minX: -40, maxX: -28, minZ: -22, maxZ: -6 },
-      { name: 'ALA DE OBJETOS', minX: 28, maxX: 40, minZ: -22, maxZ: -6 },
-      { name: 'SALA VERDE - FLORESTA SERENA', minX: -40, maxX: -28, minZ: -44, maxZ: -30 },
-      { name: 'SALA VERDE - PRADO GENTIL', minX: 28, maxX: 40, minZ: -44, maxZ: -30 },
-      { name: 'ENTRADA', minX: -9, maxX: 9, minZ: -2, maxZ: 9 },
-      { name: 'CENTRAL', minX: -10, maxX: 10, minZ: -18, maxZ: -10 },
-      { name: 'SALA DE TESTES - CAMPO VIRTUAL', minX: -14, maxX: 14, minZ: -66, maxZ: -46 }
-    ];
+    this.rooms = ROOMS;
   }
 
   _cloneTexture(texture, repeatX = 1, repeatY = 1) {
@@ -1121,10 +1114,7 @@ export class LaboratoryBuilder {
    * @returns {string}
    */
   getRoomNameAt(x, z) {
-    for (const room of this.rooms) {
-      if (x >= room.minX && x <= room.maxX && z >= room.minZ && z <= room.maxZ) return room.name;
-    }
-    return null;
+    return getRoomAt(x, z)?.name ?? null;
   }
 
   dispose() {

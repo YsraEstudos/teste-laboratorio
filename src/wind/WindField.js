@@ -1,13 +1,21 @@
 import * as THREE from 'three';
+import { ROOMS } from '../world/RoomData.js';
 
 const TAU = Math.PI * 2;
+const WIND_PROFILES = Object.freeze({
+  entrance: [0.9, 0.85, -0.2],
+  central: [0.8, 0.75, 0.3],
+  green: [1.3, 1.45, 0.15],
+  standard: [1.02, 1, 0],
+  testing: [1.55, 1.7, -0.1],
+});
 
 /**
  * Continuous airflow model for the laboratory. It combines slow weather drift,
  * short gusts, room-specific ventilation, and position-dependent turbulence.
  */
 export class WindField {
-  constructor(rooms = []) {
+  constructor(rooms = ROOMS) {
     this.rooms = rooms;
     this.time = 0;
     this.baseAngle = -0.72;
@@ -93,11 +101,8 @@ export class WindField {
   _applyZone(x, z) {
     for (const room of this.rooms) {
       if (x < room.minX || x > room.maxX || z < room.minZ || z > room.maxZ) continue;
-      if (room.name.includes('VERDE')) return this._setZone(1.3, 1.45, 0.15);
-      if (room.name.includes('CAMPO VIRTUAL')) return this._setZone(1.55, 1.7, -0.1);
-      if (room.name.includes('CENTRAL')) return this._setZone(0.8, 0.75, 0.3);
-      if (room.name.includes('ENTRADA')) return this._setZone(0.9, 0.85, -0.2);
-      return this._setZone(1.02, 1, 0);
+      const profile = WIND_PROFILES[room.windProfile] ?? WIND_PROFILES.standard;
+      return this._setZone(...profile);
     }
 
     this._setZone(0.68, 0.55, 0);

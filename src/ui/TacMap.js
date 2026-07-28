@@ -1,3 +1,5 @@
+import { ROOMS } from '../world/RoomData.js';
+
 /**
  * TacMap manages the tactical map overlay UI.
  */
@@ -15,57 +17,7 @@ export class TacMap {
     this._lastPlayerPos = { x: null, z: null };
     this._lastChildPos = { x: null, z: null };
 
-    this.rooms = [
-      {
-        id: 'entrance',
-        name: 'ENTRADA',
-        color: '#ffd36d',
-        minX: -9, maxX: 9, minZ: -2, maxZ: 9,
-        description: 'Recepção principal do laboratório. Ponto de entrada para pesquisadores e visitantes.'
-      },
-      {
-        id: 'central',
-        name: 'CENTRAL',
-        color: '#49d7e8',
-        minX: -10, maxX: 10, minZ: -18, maxZ: -10,
-        description: 'Hub central de inteligência e distribuição de energia para todas as alas.'
-      },
-      {
-        id: 'mannequins',
-        name: 'ALA DE MANEQUINS',
-        color: '#57f0ff',
-        minX: -40, maxX: -28, minZ: -22, maxZ: -6,
-        description: 'Setor de testes biomecânicos e protótipos de robótica avançada.'
-      },
-      {
-        id: 'objects',
-        name: 'ALA DE OBJETOS',
-        color: '#ffb85c',
-        minX: 28, maxX: 40, minZ: -22, maxZ: -6,
-        description: 'Armazém de amostragem física, contêineres e equipamentos.'
-      },
-      {
-        id: 'serene_forest',
-        name: 'SALA VERDE - FLORESTA SERENA',
-        color: '#73ae63',
-        minX: -40, maxX: -28, minZ: -44, maxZ: -30,
-        description: 'Domo de simulação ambiental arbórea e botânica equilibrada.'
-      },
-      {
-        id: 'gentle_meadow',
-        name: 'SALA VERDE - PRADO GENTIL',
-        color: '#98e66b',
-        minX: 28, maxX: 40, minZ: -44, maxZ: -30,
-        description: 'Domo de simulação biológica com espelho d’água e flora expansiva.'
-      },
-      {
-        id: 'testing_room',
-        name: 'SALA DE TESTES - CONFIRMED 42',
-        color: '#f07170',
-        minX: -14, maxX: 14, minZ: -66, maxZ: -46,
-        description: 'Câmara isolada para testes elementais e forças psicocinéticas (Confirmed 42).'
-      }
-    ];
+    this.rooms = ROOMS;
 
     this.corridors = [
       { minX: -3, maxX: 3, minZ: -10, maxZ: -2 },
@@ -173,9 +125,7 @@ export class TacMap {
       this.fastTravelBtn.addEventListener('click', () => {
         if (this.hoveredRoom && this.game.player) {
           const room = this.hoveredRoom;
-          const targetX = (room.minX + room.maxX) / 2;
-          const targetZ = (room.minZ + room.maxZ) / 2;
-          this.game.player.moveTo(targetX, targetZ);
+          this.game.player.moveTo(room.navigation.x, room.navigation.z);
           this.hide();
         }
       });
@@ -190,9 +140,7 @@ export class TacMap {
       this.canvas.addEventListener('click', () => {
         if (this.hoveredRoom && this.game.player) {
           const room = this.hoveredRoom;
-          const targetX = (room.minX + room.maxX) / 2;
-          const targetZ = (room.minZ + room.maxZ) / 2;
-          this.game.player.moveTo(targetX, targetZ);
+          this.game.player.moveTo(room.navigation.x, room.navigation.z);
           this.hide();
         }
       });
