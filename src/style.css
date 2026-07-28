@@ -1102,3 +1102,13 @@ body {
   color: #7eeeff;
   font-weight: 700;
 }
+
+.radial-sector-group:focus {
+  outline: none;
+}
+
+.radial-sector-group:focus .radial-sector-path {
+  filter: brightness(1.3) drop-shadow(0 0 10px rgba(73, 215, 232, 0.9));
+  stroke: #7eeeff;
+  stroke-width: 2;
+}

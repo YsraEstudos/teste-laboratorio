@@ -65,6 +65,8 @@ export class WindChild {
     // Scene Graph Root
     this.model = new THREE.Group();
     this.model.name = 'WindChild';
+    this.model.userData.interactiveType = 'wind-child';
+    this.model.userData.isWindChild = true;
     this.model.position.copy(this.position);
 
     // Build sub-components

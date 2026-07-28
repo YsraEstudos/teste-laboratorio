@@ -133,12 +133,17 @@ describe('Wind Child state ownership', () => {
     expect({
       name: child.name,
       sceneNodeName: child.model.name,
+      sceneNodeInteraction: child.model.userData,
       powerLevel: child.powerLevel,
       happiness: child.happiness,
       energy: child.energy,
     }).toEqual({
       name: 'Wind Child',
       sceneNodeName: 'WindChild',
+      sceneNodeInteraction: {
+        interactiveType: 'wind-child',
+        isWindChild: true,
+      },
       powerLevel: 5,
       happiness: 80,
       energy: 90,
@@ -280,6 +285,7 @@ describe('RadialMenu state source', () => {
       container: {
         classList: containerClasses,
         style: {},
+        setAttribute() {},
       },
       powerSelector: {
         classList: powerClasses,

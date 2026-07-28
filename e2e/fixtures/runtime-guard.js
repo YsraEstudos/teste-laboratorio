@@ -22,8 +22,9 @@ function isLocalRequest(url) {
  * - fails when a local asset/request is aborted or returns an error response.
  */
 export const test = base.extend({
+  expectedRuntimeIssues: [[], { option: true }],
   runtimeGuard: [
-    async ({ page }, use) => {
+    async ({ page, expectedRuntimeIssues }, use) => {
       const issues = [];
 
       await page.route('**/*', async (route) => {
@@ -69,7 +70,7 @@ export const test = base.extend({
 
       await use();
 
-      expect(issues, `Runtime guard found browser errors:\n${issues.join('\n')}`).toEqual([]);
+      expect(issues, `Runtime guard found browser errors:\n${issues.join('\n')}`).toEqual(expectedRuntimeIssues);
     },
     { auto: true },
   ],

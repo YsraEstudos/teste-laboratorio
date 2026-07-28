@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite';
-export default defineConfig({
+
+export default defineConfig(({ mode }) => ({
   server: { open: true },
   build: {
     target: 'esnext',
     chunkSizeWarningLimit: 1000,
     minify: 'terser',
-    terserOptions: { compress: { drop_console: true, drop_debugger: true } },
+    terserOptions: { compress: { drop_console: mode !== 'e2e', drop_debugger: true } },
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -15,4 +16,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

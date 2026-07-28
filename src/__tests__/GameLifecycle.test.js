@@ -17,6 +17,7 @@ const harness = vi.hoisted(() => ({
     webglRenderer: [],
   },
   lifecycle: [],
+  raycastHits: [],
 }));
 
 vi.mock('three', async (importOriginal) => {
@@ -33,9 +34,17 @@ vi.mock('three', async (importOriginal) => {
     }
   }
 
+  class Raycaster {
+    constructor() {
+      this.setFromCamera = vi.fn();
+      this.intersectObjects = vi.fn(() => harness.raycastHits);
+    }
+  }
+
   return {
     ...actual,
     WebGLRenderer,
+    Raycaster,
   };
 });
 
@@ -53,6 +62,7 @@ vi.mock('../entities/PlayerController.js', () => ({
   PlayerController: class {
     constructor() {
       this.position = { x: 0, y: 0, z: 0 };
+      this.model = { name: 'Player', userData: { interactiveType: 'player', isPlayer: true }, parent: null };
       this.setNavigation = vi.fn();
       this.setWindForce = vi.fn();
       this.update = vi.fn();
@@ -83,6 +93,9 @@ vi.mock('../entities/WindChild.js', () => ({
         },
       };
       this.model = {
+        name: 'WindChild',
+        userData: { interactiveType: 'wind-child', isWindChild: true },
+        parent: null,
         position: {
           copy: vi.fn(),
         },
@@ -130,6 +143,7 @@ vi.mock('../ui/RadialMenu.js', () => ({
   RadialMenu: class {
     constructor() {
       this.show = vi.fn();
+      this.hide = vi.fn();
       this.destroy = vi.fn(() => harness.lifecycle.push('radialMenu'));
       harness.instances.radialMenu.push(this);
     }
@@ -218,7 +232,10 @@ function createEventTarget(properties = {}) {
   };
 }
 
-const canvas = createEventTarget();
+const canvas = createEventTarget({
+  getBoundingClientRect: () => ({ left: 10, top: 20, width: 1000, height: 500 }),
+  focus: vi.fn(),
+});
 const hudElements = {
   'start-screen': createEventTarget({ classList: { add: vi.fn(), remove: vi.fn() } }),
   'pause-screen': createEventTarget({ classList: { add: vi.fn(), remove: vi.fn() } }),
@@ -332,6 +349,7 @@ beforeEach(() => {
     instances.length = 0;
   }
   harness.lifecycle.length = 0;
+  harness.raycastHits.length = 0;
 
   animationFrames.clear();
   nextAnimationId = 1;
@@ -354,6 +372,67 @@ afterAll(() => {
 describe('Game lifecycle', () => {
   it('exports Game so lifecycle ownership can be controlled explicitly', () => {
     expect(mainModule.Game).toBeTypeOf('function');
+  });
+
+  it('opens the radial menu only when the closest raycast hit belongs to the real Wind Child model', () => {
+    const game = createGame();
+    game.isPlaying = true;
+    const childMesh = { parent: game.windChild.model, userData: {} };
+
+    harness.raycastHits.push({ object: childMesh });
+    const event = {
+      type: 'contextmenu',
+      clientX: 510,
+      clientY: 270,
+      preventDefault: vi.fn(),
+    };
+    canvas.dispatchEvent(event);
+
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(game._pointer).toMatchObject({ x: 0, y: 0 });
+    expect(game._raycaster.setFromCamera).toHaveBeenCalledWith(game._pointer, game.renderer.camera);
+    expect(game.radialMenu.show).toHaveBeenCalledWith(510, 270);
+  });
+
+  it.each([
+    ['ground', { name: 'Floor', userData: {}, parent: null }],
+    ['Player', { name: 'PlayerMesh', userData: {}, parent: null }],
+  ])('does not open the radial menu when the closest raycast hit is %s', (_label, object) => {
+    const game = createGame();
+    game.isPlaying = true;
+    if (object.name === 'PlayerMesh') object.parent = game.player.model;
+    harness.raycastHits.push({ object });
+
+    canvas.dispatchEvent({
+      type: 'contextmenu',
+      clientX: 510,
+      clientY: 270,
+      preventDefault: vi.fn(),
+    });
+
+    expect(game.radialMenu.show).not.toHaveBeenCalled();
+  });
+
+  it('preserves the Player left-click handler while adding Wind Child picking', () => {
+    const game = createGame();
+    game.isPlaying = true;
+    const event = { type: 'pointerdown', button: 0, clientX: 200, clientY: 300 };
+
+    canvas.dispatchEvent(event);
+
+    expect(game.player.handlePointerDown).toHaveBeenCalledOnce();
+    expect(game.player.handlePointerDown).toHaveBeenCalledWith(event);
+    expect(game.radialMenu.show).not.toHaveBeenCalled();
+  });
+
+  it('closes the radial menu before pausing the game', () => {
+    const game = createGame();
+    game.isPlaying = true;
+
+    game.pause();
+
+    expect(game.radialMenu.hide).toHaveBeenCalledOnce();
+    expect(game.isPlaying).toBe(false);
   });
 
   it('cancels the latest scheduled animation frame on destroy', () => {

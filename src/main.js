@@ -27,6 +27,8 @@ export class Game {
     const canvas = document.getElementById('game-canvas');
     this.renderer = new Renderer(canvas);
     this.input = new InputManager(canvas);
+    this._pointer = new THREE.Vector2();
+    this._raycaster = new THREE.Raycaster();
 
     // Performance Telemetry Profiler (Edge & AMD GPU/CPU)
     this.profiler = new PerformanceProfiler(this);
@@ -78,9 +80,36 @@ export class Game {
     this._onContextMenu = (event) => {
       event.preventDefault();
       if (!this.isPlaying) return;
+
+      const rect = canvas.getBoundingClientRect();
+      this._pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      this._raycaster.setFromCamera(this._pointer, this.renderer.camera);
+
+      const [closestHit] = this._raycaster.intersectObjects(this.renderer.scene.children, true);
+      if (!this._isWindChildHit(closestHit?.object)) return;
+
       this.radialMenu.show(event.clientX, event.clientY);
     };
     canvas.addEventListener('contextmenu', this._onContextMenu);
+  }
+
+  _isWindChildHit(object) {
+    const windChildModel = this.windChild?.model;
+    let current = object;
+
+    while (current) {
+      if (
+        current === windChildModel &&
+        current.userData?.interactiveType === 'wind-child' &&
+        current.userData?.isWindChild === true
+      ) {
+        return true;
+      }
+      current = current.parent;
+    }
+
+    return false;
   }
 
   /**
@@ -106,6 +135,7 @@ export class Game {
   }
 
   pause() {
+    this.radialMenu?.hide?.();
     this.windAbility.pause();
     if (!this.isPlaying) return;
     this.isPlaying = false;

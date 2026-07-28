@@ -9,8 +9,10 @@ export class RadialMenu {
   constructor(game) {
     this.game = game;
     this.active = false;
+    this.destroyed = false;
     this.position = { x: 0, y: 0 };
     this.hoveredSector = null;
+    this.activeSectorIndex = 0;
 
     this.sectors = [
       {
@@ -67,6 +69,8 @@ export class RadialMenu {
     this.container.id = 'radial-menu-container';
     this.container.className = 'radial-menu-overlay hidden';
     this.container.setAttribute('role', 'menu');
+    this.container.setAttribute('aria-label', 'Ações da Wind Child');
+    this.container.setAttribute('aria-hidden', 'true');
 
     const menuWrapper = document.createElement('div');
     menuWrapper.className = 'radial-menu-wrapper';
@@ -114,6 +118,9 @@ export class RadialMenu {
       g.setAttribute('class', 'radial-sector-group');
       g.setAttribute('data-id', sector.id);
       g.setAttribute('data-index', index);
+      g.setAttribute('role', 'menuitem');
+      g.setAttribute('aria-label', sector.title);
+      g.setAttribute('tabindex', '-1');
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', pathData);
@@ -143,8 +150,10 @@ export class RadialMenu {
 
       g.addEventListener('mouseenter', () => this._onSectorHover(sector, g));
       g.addEventListener('mouseleave', () => this._onSectorLeave(g));
+      g.addEventListener('focus', () => this._setActiveSector(index, false));
       g.addEventListener('click', (e) => {
         e.stopPropagation();
+        this._setActiveSector(index, false);
         this._onSectorClick(sector);
       });
 
@@ -217,17 +226,46 @@ export class RadialMenu {
       }
     };
     this._onKeyDown = (e) => {
-      if (this.active && e.key === 'Escape') {
+      if (!this.active) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         this.hide();
+        return;
+      }
+
+      let nextIndex = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextIndex = this.activeSectorIndex + 1;
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextIndex = this.activeSectorIndex - 1;
+      }
+
+      if (nextIndex !== null) {
+        e.preventDefault();
+        e.stopPropagation();
+        this._setActiveSector(nextIndex);
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+        this._onSectorClick(this.sectors[this.activeSectorIndex]);
       }
     };
     window.addEventListener('pointerdown', this._onPointerDown);
-    window.addEventListener('keydown', this._onKeyDown);
+    window.addEventListener('keydown', this._onKeyDown, true);
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.hide();
+
     if (this._onPointerDown) window.removeEventListener('pointerdown', this._onPointerDown);
-    if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown);
+    if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown, true);
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
@@ -239,7 +277,7 @@ export class RadialMenu {
    * @param {number} y The Y coordinate.
    */
   show(x, y) {
-    if (!this.game.windChild) {
+    if (this.destroyed || !this.game.windChild) {
       this.hide();
       return;
     }
@@ -257,19 +295,41 @@ export class RadialMenu {
     this.container.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
     this.container.classList.remove('hidden');
     this.container.classList.add('active');
+    this.container.setAttribute('aria-hidden', 'false');
 
     this.powerSelector.classList.add('hidden');
     this._updateTelemetry();
+    this._setActiveSector(0);
   }
 
   /**
    * Hides the radial menu.
    */
   hide() {
+    const wasActive = this.active;
     this.active = false;
     this.container.classList.remove('active');
     this.container.classList.add('hidden');
+    this.container.setAttribute('aria-hidden', 'true');
     this.powerSelector.classList.add('hidden');
+
+    if (wasActive) {
+      document.getElementById('game-canvas')?.focus?.();
+    }
+  }
+
+  _setActiveSector(index, focus = true) {
+    const count = this.sectorElements.length;
+    if (count === 0) return;
+
+    this.activeSectorIndex = ((index % count) + count) % count;
+    this.sectorElements.forEach(({ g }, sectorIndex) => {
+      g.setAttribute('tabindex', sectorIndex === this.activeSectorIndex ? '0' : '-1');
+    });
+
+    if (focus) {
+      this.sectorElements[this.activeSectorIndex].g.focus();
+    }
   }
 
   _updateTelemetry() {

@@ -24,6 +24,8 @@ test('boots WebGL and completes the start, TacMap, pause and resume smoke flow',
       drawingBufferWidth: context.drawingBufferWidth,
       drawingBufferHeight: context.drawingBufferHeight,
       version: context.getParameter(context.VERSION),
+      error: context.getError(),
+      noError: context.NO_ERROR,
     };
   });
 
@@ -32,6 +34,7 @@ test('boots WebGL and completes the start, TacMap, pause and resume smoke flow',
   expect(webgl.drawingBufferWidth).toBeGreaterThan(0);
   expect(webgl.drawingBufferHeight).toBeGreaterThan(0);
   expect(webgl.version).toContain('WebGL');
+  expect(webgl.error).toBe(webgl.noError);
 
   const startScreen = page.locator('#start-screen');
   await expect(startScreen.getByRole('heading', { name: 'LABORATÓRIO 3D' })).toBeVisible();
