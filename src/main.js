@@ -12,7 +12,7 @@ import { PerformanceProfiler } from './engine/PerformanceProfiler.js';
 import { LaboratoryBuilder } from './world/LaboratoryBuilder.js';
 import { NavigationGrid } from './world/NavigationGrid.js';
 
-class Game {
+export class Game {
   static CONSTANTS = {
     WIND_BLAST_RANGE_SQ: 18.0 ** 2,
     WIND_CHARGE_DELAY_MS: 700,
@@ -25,6 +25,9 @@ class Game {
   constructor() {
     this.clock = new THREE.Clock();
     this.isPlaying = false;
+    this.destroyed = false;
+    this.animationId = null;
+    this.windBlastTimer = null;
 
     const canvas = document.getElementById('game-canvas');
     this.renderer = new Renderer(canvas);
@@ -80,8 +83,6 @@ class Game {
     };
     canvas.addEventListener('contextmenu', this._onContextMenu);
 
-    this._onResize = () => this.renderer.onWindowResize();
-    window.addEventListener('resize', this._onResize);
   }
 
   /**
@@ -101,6 +102,7 @@ class Game {
   }
 
   pause() {
+    this._cancelWindBlast();
     if (!this.isPlaying) return;
     this.isPlaying = false;
     this.wind.suspendAudio();
@@ -111,7 +113,7 @@ class Game {
    * Triggers wind blast
    */
   triggerWindBlastOnObjects() {
-    if (!this.windChild || !this.lab.testObjects) return;
+    if (this.destroyed || this.windBlastTimer !== null || !this.windChild || !this.lab.testObjects) return;
 
     // Find closest test object to Wind Child
     let closestObj = null;
@@ -135,7 +137,10 @@ class Game {
     // Trigger hands-forward trembling animation and wind blast
     this.windChild.startCharging();
 
-    setTimeout(() => {
+    this.windBlastTimer = setTimeout(() => {
+      this.windBlastTimer = null;
+      if (this.destroyed) return;
+
       this.windChild.stopCharging();
       this.windChild.releaseWindBlast();
 
@@ -173,11 +178,20 @@ class Game {
     }, Game.CONSTANTS.WIND_CHARGE_DELAY_MS);
   }
 
+  _cancelWindBlast() {
+    if (this.windBlastTimer === null) return;
+
+    clearTimeout(this.windBlastTimer);
+    this.windBlastTimer = null;
+    this.windChild?.stopCharging?.();
+  }
+
   /**
    * Main loop
    */
   _loop() {
-    requestAnimationFrame(this._loop);
+    if (this.destroyed) return;
+    this.animationId = requestAnimationFrame(this._loop);
 
     const now = performance.now();
     this.profiler.startFrame(now);
@@ -206,14 +220,32 @@ class Game {
   }
 
   destroy() {
-    if (this.animationId) cancelAnimationFrame(this.animationId);
-    window.removeEventListener('resize', this._onResize);
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.isPlaying = false;
+
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+    this._cancelWindBlast();
+
     const canvas = document.getElementById('game-canvas');
     if (canvas) {
       if (this._onPointerDown) canvas.removeEventListener('pointerdown', this._onPointerDown);
       if (this._onContextMenu) canvas.removeEventListener('contextmenu', this._onContextMenu);
     }
-    this.wind.dispose();
+
+    this.tacMap?.destroy?.();
+    this.radialMenu?.destroy?.();
+    this.hud?.destroy?.();
+    this.profiler?.destroy?.();
+    this.input?.dispose?.();
+    this.windFX?.dispose?.();
+    this.wind?.dispose?.();
+    this.windChild?.dispose?.();
+    this.lab?.dispose?.();
+    this.renderer?.dispose?.();
   }
 }
 

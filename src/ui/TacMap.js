@@ -16,6 +16,8 @@ export class TacMap {
     this._entitiesMoved = false;
     this._lastPlayerPos = { x: null, z: null };
     this._lastChildPos = { x: null, z: null };
+    this.destroyed = false;
+    this.animationId = null;
 
     this.rooms = ROOMS;
 
@@ -159,6 +161,8 @@ export class TacMap {
    * Shows the tactical map.
    */
   show() {
+    if (this.destroyed) return;
+
     this.active = true;
     this.container.classList.remove('hidden');
     this.container.classList.add('active');
@@ -278,7 +282,7 @@ export class TacMap {
    * Main rendering loop for the tactical map.
    */
   _renderMap() {
-    if (!this.active) return;
+    if (this.destroyed || !this.active) return;
 
     this.time += 0.016;
 
@@ -301,7 +305,7 @@ export class TacMap {
     }
 
     if (!this._dirty && !this._entitiesMoved) {
-      requestAnimationFrame(() => this._renderMap());
+      this._scheduleFrame();
       return;
     }
 
@@ -450,12 +454,28 @@ export class TacMap {
       ctx.restore();
     }
 
-    if (this.active) {
-      requestAnimationFrame(() => this._renderMap());
-    }
+    this._scheduleFrame();
+  }
+
+  _scheduleFrame() {
+    if (this.destroyed || !this.active || this.animationId !== null) return;
+
+    this.animationId = requestAnimationFrame(() => {
+      this.animationId = null;
+      this._renderMap();
+    });
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.active = false;
+
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+
     if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown);
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);

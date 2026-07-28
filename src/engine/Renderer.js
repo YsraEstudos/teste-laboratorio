@@ -3,6 +3,7 @@ import * as THREE from 'three';
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
+    this.disposed = false;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0d151d);
@@ -37,7 +38,8 @@ export class Renderer {
 
     this._setupLighting();
 
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    this._onResize = this.onWindowResize.bind(this);
+    window.addEventListener('resize', this._onResize);
   }
 
   _setupLighting() {
@@ -65,10 +67,13 @@ export class Renderer {
   }
 
   render() {
+    if (this.disposed) return;
     this.renderer.render(this.scene, this.camera);
   }
 
   onWindowResize() {
+    if (this.disposed) return;
+
     const w = window.innerWidth;
     const h = window.innerHeight;
     const aspect = w / h;
@@ -81,6 +86,9 @@ export class Renderer {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    window.removeEventListener('resize', this._onResize);
     this.renderer.dispose();
   }
 }
