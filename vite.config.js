@@ -11,8 +11,8 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('three')) return 'vendor-three';
           if (id.includes('node_modules')) return 'vendor';
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 });

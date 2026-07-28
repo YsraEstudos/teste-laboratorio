@@ -34,9 +34,7 @@ describe('TextureGenerator.createSignageTexture', () => {
   });
 
   it('reuses the texture for an identical signage signature', () => {
-    expect(TextureGenerator.createSignageTexture('ENTRADA')).toBe(
-      TextureGenerator.createSignageTexture('ENTRADA'),
-    );
+    expect(TextureGenerator.createSignageTexture('ENTRADA')).toBe(TextureGenerator.createSignageTexture('ENTRADA'));
   });
 
   it('normalizes default signage options before caching', () => {

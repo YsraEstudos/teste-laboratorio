@@ -3,7 +3,7 @@ import * as THREE from 'three';
 /**
  * Ultra-Complex High-Performance Wind & Fluid Particle System
  * Optimized for 60 FPS Guaranteed Execution on AMD / WebGL systems.
- * 
+ *
  * Architecture Features (Based on Top GitHub WebGL Game Engines):
  *  1. Single-Draw-Call Instanced Particles (InstancedMesh, 1,000+ particles = 1 Draw Call)
  *  2. 3D Curl Noise Turbulence Vector Fields (Fluid-like organic vortex motion)
@@ -65,7 +65,7 @@ export class WindParticleSystem {
       transparent: true,
       opacity: 0.9,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
     });
 
     this.vortexInstancedMesh = new THREE.InstancedMesh(sphereGeo, vortexMat, this.maxVortexParticles);
@@ -92,7 +92,7 @@ export class WindParticleSystem {
         life: 0,
         maxLife: 1.0,
         scale: 1.0,
-        colorHex: 0x7eeeff
+        colorHex: 0x7eeeff,
       });
     }
     this.vortexInstancedMesh.instanceMatrix.needsUpdate = true;
@@ -115,7 +115,7 @@ export class WindParticleSystem {
       transparent: true,
       opacity: 0.65,
       depthWrite: false,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
     const smokeGeo = new THREE.PlaneGeometry(1.4, 1.4);
 
@@ -131,7 +131,7 @@ export class WindParticleSystem {
         life: 0,
         maxLife: 1.2,
         startScale: 0.6,
-        endScale: 3.8
+        endScale: 3.8,
       });
     }
 
@@ -145,7 +145,7 @@ export class WindParticleSystem {
       transparent: true,
       opacity: 0.95,
       side: THREE.DoubleSide,
-      depthWrite: false
+      depthWrite: false,
     });
     const ringGeo = new THREE.TorusGeometry(0.5, 0.05, 12, 36);
 
@@ -159,7 +159,7 @@ export class WindParticleSystem {
         life: 0,
         maxLife: 0.8,
         direction: new THREE.Vector3(),
-        expandSpeed: 5.5
+        expandSpeed: 5.5,
       });
     }
 
@@ -180,7 +180,7 @@ export class WindParticleSystem {
       transparent: true,
       opacity: 0.7,
       depthWrite: false,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
     const dustGeo = new THREE.PlaneGeometry(1.0, 1.0);
 
@@ -196,7 +196,7 @@ export class WindParticleSystem {
         maxLife: 1.5,
         velocity: new THREE.Vector3(),
         startScale: 0.4,
-        endScale: 3.2
+        endScale: 3.2,
       });
     }
   }

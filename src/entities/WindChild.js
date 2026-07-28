@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 /**
  * WindChild - 3D Character and Procedural Animation System
- * 
+ *
  * Features:
  * - Child-proportioned stylized 3D model (large head ratio, compact limbs)
  * - "Confirmed 42" custom canvas-textured badge
@@ -133,9 +133,18 @@ export class WindChild {
   }
 
   // Convenience methods
-  setPowerLevel(level) { this.powerLevel = level; return this; }
-  setHappiness(val) { this.happiness = val; return this; }
-  setEnergy(val) { this.energy = val; return this; }
+  setPowerLevel(level) {
+    this.powerLevel = level;
+    return this;
+  }
+  setHappiness(val) {
+    this.happiness = val;
+    return this;
+  }
+  setEnergy(val) {
+    this.energy = val;
+    return this;
+  }
 
   // ==========================================
   // MODEL CONSTRUCTION (Child Proportions)
@@ -145,20 +154,20 @@ export class WindChild {
     const skinMat = new THREE.MeshStandardMaterial({
       color: 0xffdfc4,
       roughness: 0.55,
-      metalness: 0.05
+      metalness: 0.05,
     });
 
     const hairMat = new THREE.MeshStandardMaterial({
       color: 0x2cd5eb, // Wind-blessed cyan tinted hair
       emissive: 0x0f5566,
       emissiveIntensity: 0.4,
-      roughness: 0.4
+      roughness: 0.4,
     });
 
     const tunicMat = new THREE.MeshStandardMaterial({
       color: 0x1b3b5a,
       roughness: 0.5,
-      metalness: 0.15
+      metalness: 0.15,
     });
 
     const scarfMat = new THREE.MeshStandardMaterial({
@@ -166,28 +175,28 @@ export class WindChild {
       emissive: 0x2bbcd1,
       emissiveIntensity: 0.6,
       roughness: 0.3,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
 
     const pantsMat = new THREE.MeshStandardMaterial({
       color: 0x122033,
-      roughness: 0.7
+      roughness: 0.7,
     });
 
     const bootMat = new THREE.MeshStandardMaterial({
       color: 0x0a1420,
-      roughness: 0.4
+      roughness: 0.4,
     });
 
     const eyeMat = new THREE.MeshStandardMaterial({
       color: 0x0b253a,
-      roughness: 0.1
+      roughness: 0.1,
     });
 
     const irisMat = new THREE.MeshStandardMaterial({
       color: 0x00f0ff,
       emissive: 0x00a8ff,
-      emissiveIntensity: 1.2
+      emissiveIntensity: 1.2,
     });
 
     // Root offset container (for floating effect)
@@ -197,7 +206,7 @@ export class WindChild {
     // Ground Shadow
     this.shadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.55, 24),
-      new THREE.MeshBasicMaterial({ color: 0x020810, transparent: true, opacity: 0.4, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color: 0x020810, transparent: true, opacity: 0.4, depthWrite: false }),
     );
     this.shadow.rotation.x = -Math.PI / 2;
     this.shadow.position.y = 0.01;
@@ -287,7 +296,7 @@ export class WindChild {
   _buildArms(skinMat, tunicMat) {
     const gloveMat = new THREE.MeshStandardMaterial({
       color: 0x16364d,
-      roughness: 0.4
+      roughness: 0.4,
     });
 
     // Left Arm
@@ -404,7 +413,7 @@ export class WindChild {
       map: texture,
       roughness: 0.3,
       metalness: 0.4,
-      transparent: true
+      transparent: true,
     });
 
     const badgeMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.15), badgeMat);
@@ -427,7 +436,7 @@ export class WindChild {
       transparent: true,
       opacity: 0.5,
       wireframe: true,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
     });
 
     this.windRing1 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 32), ringMat);
@@ -478,7 +487,7 @@ export class WindChild {
       transparent: true,
       opacity: 0.75,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
     });
 
     this.particles = new THREE.Points(geometry, particleMat);
@@ -513,7 +522,7 @@ export class WindChild {
       transparent: true,
       opacity: 0,
       side: THREE.DoubleSide,
-      depthWrite: false
+      depthWrite: false,
     });
 
     this.blastRing = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.3, 32), blastMat);
@@ -527,7 +536,7 @@ export class WindChild {
       transparent: true,
       opacity: 0,
       wireframe: true,
-      depthWrite: false
+      depthWrite: false,
     });
     this.blastSphere = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), sphereMat);
     this.blastSphere.position.y = 0.5;
@@ -577,13 +586,13 @@ export class WindChild {
     this.chargeWeight += (targetChargeWeight - this.chargeWeight) * Math.min(1.0, delta * 8.0);
 
     // 1. Idle Floating & Breathing
-    this._updateFloatingAndBreathing(animSpeed, happinessMult, energyMult);
+    this._updateFloatingAndBreathing(animSpeed, happinessMult);
 
     // 2. Autonomous Looking Around
     this._updateLookingAround(delta);
 
     // 3. Hand-Trembling Wind Charge Pose ('colocar a mão para frente e tremer')
-    this._updateChargePose(animSpeed);
+    this._updateChargePose();
 
     // 4. Wind Blast Gesture & Shockwave
     this._updateBlastGesture(delta);
@@ -627,11 +636,7 @@ export class WindChild {
       direction.multiplyScalar(1 / distance);
       const moveDistance = Math.min(distance, movementBudget);
       this._navigationStart.copy(this.position);
-      this._moveWithCollisions(
-        direction.x * moveDistance,
-        direction.z * moveDistance,
-        colliders
-      );
+      this._moveWithCollisions(direction.x * moveDistance, direction.z * moveDistance, colliders);
       const movedDistance = this.position.distanceTo(this._navigationStart);
       madeProgress ||= movedDistance > 0.00001;
       movementBudget -= moveDistance;
@@ -663,10 +668,7 @@ export class WindChild {
     }
 
     if (requestedMovement && !madeProgress) {
-      this.navigationBlockedTime = Math.min(
-        this.navigationBlockTimeout,
-        this.navigationBlockedTime + delta
-      );
+      this.navigationBlockedTime = Math.min(this.navigationBlockTimeout, this.navigationBlockedTime + delta);
       if (this.navigationBlockedTime >= this.navigationBlockTimeout) {
         this.path.length = 0;
         this.pathIndex = 0;
@@ -698,12 +700,12 @@ export class WindChild {
     this._navigationAABB.min.set(
       this.position.x - this.navigationRadius,
       this.position.y + 0.02,
-      this.position.z - this.navigationRadius
+      this.position.z - this.navigationRadius,
     );
     this._navigationAABB.max.set(
       this.position.x + this.navigationRadius,
       this.position.y + 1.8,
-      this.position.z + this.navigationRadius
+      this.position.z + this.navigationRadius,
     );
 
     for (const collider of colliders) {
@@ -715,7 +717,7 @@ export class WindChild {
     }
   }
 
-  _updateFloatingAndBreathing(animSpeed, happinessMult, energyMult) {
+  _updateFloatingAndBreathing(animSpeed, happinessMult) {
     // Vertical Floating (higher happiness = more buoyant bounce)
     const floatFreq = 2.2 * animSpeed;
     const floatAmp = 0.03 + happinessMult * 0.04;
@@ -769,7 +771,7 @@ export class WindChild {
     this.headPivot.rotation.y = this.headCurrentRotation.y;
   }
 
-  _updateChargePose(animSpeed) {
+  _updateChargePose() {
     // Tremble parameters scaling with powerLevel (1 to 10)
     const trembleFreq = 28.0 + this._powerLevel * 6.0;
     const trembleAmp = (0.008 + this._powerLevel * 0.0035) * this.chargeWeight;
@@ -779,12 +781,12 @@ export class WindChild {
     this.leftHandTremble.set(
       Math.sin(t * 1.1) * trembleAmp,
       Math.cos(t * 1.3) * trembleAmp,
-      Math.sin(t * 0.9) * trembleAmp
+      Math.sin(t * 0.9) * trembleAmp,
     );
     this.rightHandTremble.set(
       Math.cos(t * 1.2) * trembleAmp,
       Math.sin(t * 1.4) * trembleAmp,
-      Math.cos(t * 0.85) * trembleAmp
+      Math.cos(t * 0.85) * trembleAmp,
     );
 
     // Base Idle Arm Rotations
@@ -805,7 +807,8 @@ export class WindChild {
     this.leftArmPivot.rotation.y = THREE.MathUtils.lerp(0, chargeLeftArmRotY, w);
     this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(idleLeftRotZ, 0.1, w);
 
-    this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(idleRightRotX, chargeArmRotX, w) + this.rightHandTremble.x * 2.0;
+    this.rightArmPivot.rotation.x =
+      THREE.MathUtils.lerp(idleRightRotX, chargeArmRotX, w) + this.rightHandTremble.x * 2.0;
     this.rightArmPivot.rotation.y = THREE.MathUtils.lerp(0, chargeRightArmRotY, w);
     this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(idleRightRotZ, -0.1, w);
 
@@ -831,7 +834,7 @@ export class WindChild {
     const progress = Math.min(1.0, this.blastTimer / this.blastDuration);
 
     // Arm push gesture curve (fast explosive forward thrust, then ease back)
-    let blastArmX = -Math.PI * 0.45;
+    let blastArmX;
     if (progress < 0.3) {
       // Explosive push
       const pushFactor = progress / 0.3;

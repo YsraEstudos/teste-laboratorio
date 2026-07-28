@@ -24,7 +24,7 @@ export class WindStreakSystem {
       transparent: true,
       opacity: 0.44,
       depthWrite: false,
-      blending: THREE.AdditiveBlending
+      blending: THREE.AdditiveBlending,
     });
     this.lines = new THREE.LineSegments(geometry, material);
     this.lines.frustumCulled = false;
@@ -37,7 +37,7 @@ export class WindStreakSystem {
         age: 0,
         maxAge: 0.35 + Math.random() * 0.6,
         phase: Math.random() * Math.PI * 2,
-        active: false
+        active: false,
       });
     }
   }
@@ -83,7 +83,7 @@ export class WindStreakSystem {
     streak.position.set(
       center.x + Math.cos(angle) * radius,
       0.35 + Math.random() * 3.5,
-      center.z + Math.sin(angle) * radius
+      center.z + Math.sin(angle) * radius,
     );
     streak.age = 0;
     streak.maxAge = 0.32 + Math.random() * 0.65;

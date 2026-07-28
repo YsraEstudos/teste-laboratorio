@@ -28,7 +28,7 @@ export class TacMap {
       { minX: -3, maxX: 3, minZ: -30, maxZ: -18 },
       { minX: -28, maxX: -3, minZ: -34, maxZ: -30 },
       { minX: 3, maxX: 28, minZ: -34, maxZ: -30 },
-      { minX: -3, maxX: 3, minZ: -46, maxZ: -34 }
+      { minX: -3, maxX: 3, minZ: -46, maxZ: -34 },
     ];
 
     this._createDOM();
@@ -192,12 +192,7 @@ export class TacMap {
     let foundRoom = null;
     for (const room of this.rooms) {
       const bounds = this._getRoomCanvasBounds(room);
-      if (
-        mouseX >= bounds.x &&
-        mouseX <= bounds.x + bounds.w &&
-        mouseY >= bounds.y &&
-        mouseY <= bounds.y + bounds.h
-      ) {
+      if (mouseX >= bounds.x && mouseX <= bounds.x + bounds.w && mouseY >= bounds.y && mouseY <= bounds.y + bounds.h) {
         foundRoom = room;
         break;
       }
@@ -224,12 +219,14 @@ export class TacMap {
         entitiesInRoom.push('WIND CHILD (Cobaia 42)');
       }
 
-      this.hoverEntities.textContent = entitiesInRoom.length > 0 ? entitiesInRoom.join(' & ') : 'NENHUMA ENTIDADE NO MOMENTO';
+      this.hoverEntities.textContent =
+        entitiesInRoom.length > 0 ? entitiesInRoom.join(' & ') : 'NENHUMA ENTIDADE NO MOMENTO';
       this.fastTravelBtn.style.display = 'block';
     } else {
       this.hoverTitle.textContent = 'PASSE O MOUSE NA SALA';
       this.hoverTitle.classList.remove('amplified');
-      this.hoverDesc.textContent = 'Mova o cursor sobre qualquer ala da planta tática para ampliar o nome e visualizar os detalhes operacionais.';
+      this.hoverDesc.textContent =
+        'Mova o cursor sobre qualquer ala da planta tática para ampliar o nome e visualizar os detalhes operacionais.';
       this.hoverEntities.textContent = 'SELECIONE UMA SALA';
       this.fastTravelBtn.style.display = 'none';
     }
@@ -258,7 +255,7 @@ export class TacMap {
       x: Math.min(x1, x2),
       y: Math.min(y1, y2),
       w: Math.abs(x2 - x1),
-      h: Math.abs(y2 - y1)
+      h: Math.abs(y2 - y1),
     };
   }
 
@@ -274,7 +271,7 @@ export class TacMap {
 
     return {
       cx: pad + ((x - minWorldX) / (maxWorldX - minWorldX)) * w,
-      cy: pad + ((z - minWorldZ) / (maxWorldZ - minWorldZ)) * h
+      cy: pad + ((z - minWorldZ) / (maxWorldZ - minWorldZ)) * h,
     };
   }
 
@@ -294,7 +291,7 @@ export class TacMap {
         this._lastPlayerPos.z = p.z;
       }
     }
-    
+
     if (this.game.windChild) {
       const c = this.game.windChild.position;
       if (c.x !== this._lastChildPos.x || c.z !== this._lastChildPos.z) {
@@ -321,12 +318,14 @@ export class TacMap {
     ctx.lineWidth = 1;
     for (let x = 0; x < width; x += 30) {
       ctx.beginPath();
-      ctx.moveTo(x, 0); ctx.lineTo(x, height);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
       ctx.stroke();
     }
     for (let y = 0; y < height; y += 30) {
       ctx.beginPath();
-      ctx.moveTo(0, y); ctx.lineTo(width, y);
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
       ctx.stroke();
     }
 
@@ -350,7 +349,7 @@ export class TacMap {
       ctx.fillRect(b.x, b.y, b.w, b.h);
 
       // Border
-      ctx.strokeStyle = isHovered ? '#ffffff' : (room.color || '#49d7e8');
+      ctx.strokeStyle = isHovered ? '#ffffff' : room.color || '#49d7e8';
       ctx.lineWidth = isHovered ? 4 : 2;
       ctx.strokeRect(b.x, b.y, b.w, b.h);
 
@@ -366,7 +365,7 @@ export class TacMap {
       ctx.font = `${isHovered ? '700' : '600'} ${fontSize}px Rajdhani, Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = isHovered ? '#ffffff' : (room.color || '#a9f0ff');
+      ctx.fillStyle = isHovered ? '#ffffff' : room.color || '#a9f0ff';
 
       // Wrap or truncate long title
       const roomName = room.name;
@@ -421,10 +420,6 @@ export class TacMap {
       ctx.translate(p.cx, p.cy);
 
       // Directional Cone
-      const coneLength = 22;
-      const dirX = Math.sin(rotY) * coneLength;
-      const dirY = Math.cos(rotY) * coneLength;
-
       ctx.fillStyle = 'rgba(73, 215, 232, 0.35)';
       ctx.beginPath();
       ctx.moveTo(0, 0);

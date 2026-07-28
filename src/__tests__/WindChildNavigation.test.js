@@ -11,7 +11,7 @@ function pathResult(overrides = {}) {
     resolvedTarget: new THREE.Vector3(2, 0, 0),
     adjustedStart: false,
     adjustedTarget: false,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -34,7 +34,7 @@ function createNavigationHarness(position = new THREE.Vector3()) {
   child.walkSpeed = 4.2;
   child.model = {
     position: position.clone(),
-    rotation: { y: 0 }
+    rotation: { y: 0 },
   };
 
   child._updateFloatingAndBreathing = vi.fn();
@@ -66,11 +66,13 @@ describe('WindChild navigation contract', () => {
     child.pathIndex = 0;
     child.navigationState = 'moving';
     child.navigation = {
-      findPath: vi.fn(() => pathResult({
-        status: 'partial',
-        reason: 'target-unreachable',
-        waypoints: [new THREE.Vector3(1, 0, 0)]
-      }))
+      findPath: vi.fn(() =>
+        pathResult({
+          status: 'partial',
+          reason: 'target-unreachable',
+          waypoints: [new THREE.Vector3(1, 0, 0)],
+        }),
+      ),
     };
 
     child.moveTo(4, 0);
@@ -98,49 +100,38 @@ describe('WindChild navigation contract', () => {
     {
       axis: 'X',
       target: new THREE.Vector3(3, 0, 0),
-      collider: new THREE.Box3(
-        new THREE.Vector3(1, 0, -1),
-        new THREE.Vector3(1.05, 2, 1)
-      ),
+      collider: new THREE.Box3(new THREE.Vector3(1, 0, -1), new THREE.Vector3(1.05, 2, 1)),
       blockedCoordinate: 'x',
-      freeCoordinate: 'z'
+      freeCoordinate: 'z',
     },
     {
       axis: 'Z',
       target: new THREE.Vector3(0, 0, 3),
-      collider: new THREE.Box3(
-        new THREE.Vector3(-1, 0, 1),
-        new THREE.Vector3(1, 2, 1.05)
-      ),
+      collider: new THREE.Box3(new THREE.Vector3(-1, 0, 1), new THREE.Vector3(1, 2, 1.05)),
       blockedCoordinate: 'z',
-      freeCoordinate: 'x'
-    }
-  ])('uses substeps to prevent tunnelling through a thin $axis collider', ({
-    target,
-    collider,
-    blockedCoordinate,
-    freeCoordinate
-  }) => {
-    const child = createNavigationHarness();
-    child.path = [target];
-    child.navigationState = 'moving';
+      freeCoordinate: 'x',
+    },
+  ])(
+    'uses substeps to prevent tunnelling through a thin $axis collider',
+    ({ target, collider, blockedCoordinate, freeCoordinate }) => {
+      const child = createNavigationHarness();
+      child.path = [target];
+      child.navigationState = 'moving';
 
-    child.update(1, [collider]);
+      child.update(1, [collider]);
 
-    expect(child.position[blockedCoordinate]).toBeLessThanOrEqual(0.621);
-    expect(child.position[freeCoordinate]).toBe(0);
-    expect(child.path.length).toBe(1);
-    expect(child.navigationState).toBe('moving');
-  });
+      expect(child.position[blockedCoordinate]).toBeLessThanOrEqual(0.621);
+      expect(child.position[freeCoordinate]).toBe(0);
+      expect(child.path.length).toBe(1);
+      expect(child.navigationState).toBe('moving');
+    },
+  );
 
   it('cancels a route with an explicit reason after 0.5 seconds continuously blocked', () => {
     const child = createNavigationHarness(new THREE.Vector3(0.6, 0, 0));
     child.path = [new THREE.Vector3(3, 0, 0)];
     child.navigationState = 'moving';
-    const wall = new THREE.Box3(
-      new THREE.Vector3(1, 0, -1),
-      new THREE.Vector3(1.1, 2, 1)
-    );
+    const wall = new THREE.Box3(new THREE.Vector3(1, 0, -1), new THREE.Vector3(1.1, 2, 1));
 
     child.update(0.25, [wall]);
     expect(child.navigationState).toBe('moving');

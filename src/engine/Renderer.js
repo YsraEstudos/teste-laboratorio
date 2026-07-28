@@ -12,12 +12,12 @@ export class Renderer {
     this.viewSize = 24;
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.OrthographicCamera(
-      -this.viewSize * aspect / 2,
-      this.viewSize * aspect / 2,
+      (-this.viewSize * aspect) / 2,
+      (this.viewSize * aspect) / 2,
       this.viewSize / 2,
       -this.viewSize / 2,
       0.1,
-      300
+      300,
     );
     this.camera.position.set(0, 24, 6);
     this.camera.userData.canvas = canvas;
@@ -26,7 +26,7 @@ export class Renderer {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
-      powerPreference: 'high-performance'
+      powerPreference: 'high-performance',
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -77,8 +77,8 @@ export class Renderer {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const aspect = w / h;
-    this.camera.left = -this.viewSize * aspect / 2;
-    this.camera.right = this.viewSize * aspect / 2;
+    this.camera.left = (-this.viewSize * aspect) / 2;
+    this.camera.right = (this.viewSize * aspect) / 2;
     this.camera.top = this.viewSize / 2;
     this.camera.bottom = -this.viewSize / 2;
     this.camera.updateProjectionMatrix();

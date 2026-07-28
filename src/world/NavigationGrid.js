@@ -46,16 +46,12 @@ export class NavigationGrid {
   worldToCell(x, z) {
     return {
       x: THREE.MathUtils.clamp(Math.floor((x - this.minX) / this.cellSize), 0, this.cols - 1),
-      z: THREE.MathUtils.clamp(Math.floor((z - this.minZ) / this.cellSize), 0, this.rows - 1)
+      z: THREE.MathUtils.clamp(Math.floor((z - this.minZ) / this.cellSize), 0, this.rows - 1),
     };
   }
 
   cellToWorld(x, z) {
-    return new THREE.Vector3(
-      this.minX + (x + 0.5) * this.cellSize,
-      0,
-      this.minZ + (z + 0.5) * this.cellSize
-    );
+    return new THREE.Vector3(this.minX + (x + 0.5) * this.cellSize, 0, this.minZ + (z + 0.5) * this.cellSize);
   }
 
   isWalkable(x, z) {
@@ -133,7 +129,7 @@ export class NavigationGrid {
     requestedTarget = null,
     resolvedTarget = null,
     adjustedStart = false,
-    adjustedTarget = false
+    adjustedTarget = false,
   }) {
     return {
       status,
@@ -142,7 +138,7 @@ export class NavigationGrid {
       requestedTarget,
       resolvedTarget,
       adjustedStart,
-      adjustedTarget
+      adjustedTarget,
     };
   }
 
@@ -150,7 +146,7 @@ export class NavigationGrid {
     if (![startX, startZ, targetX, targetZ].every(Number.isFinite)) {
       return this._result({
         status: 'invalid',
-        reason: 'invalid-coordinates'
+        reason: 'invalid-coordinates',
       });
     }
 
@@ -162,7 +158,7 @@ export class NavigationGrid {
       return this._result({
         status: 'invalid',
         reason: 'start-unwalkable',
-        requestedTarget
+        requestedTarget,
       });
     }
 
@@ -172,26 +168,24 @@ export class NavigationGrid {
         status: 'invalid',
         reason: 'target-unwalkable',
         requestedTarget,
-        adjustedStart: start.x !== requestedStartCell.x || start.z !== requestedStartCell.z
+        adjustedStart: start.x !== requestedStartCell.x || start.z !== requestedStartCell.z,
       });
     }
 
-    const adjustedStart = (
+    const adjustedStart =
       start.x !== requestedStartCell.x ||
       start.z !== requestedStartCell.z ||
       startX < this.minX ||
       startX >= this.maxX ||
       startZ < this.minZ ||
-      startZ >= this.maxZ
-    );
-    const adjustedTarget = (
+      startZ >= this.maxZ;
+    const adjustedTarget =
       target.x !== requestedTargetCell.x ||
       target.z !== requestedTargetCell.z ||
       targetX < this.minX ||
       targetX >= this.maxX ||
       targetZ < this.minZ ||
-      targetZ >= this.maxZ
-    );
+      targetZ >= this.maxZ;
     const resolvedTarget = this.cellToWorld(target.x, target.z);
     const completeReason = this._adjustmentReason(adjustedStart, adjustedTarget);
 
@@ -205,7 +199,7 @@ export class NavigationGrid {
         requestedTarget,
         resolvedTarget,
         adjustedStart,
-        adjustedTarget
+        adjustedTarget,
       });
     }
 
@@ -217,11 +211,22 @@ export class NavigationGrid {
     const closed = new Uint8Array(total);
     const heap = [];
     costs[startIndex] = 0;
-    this._push(heap, { index: startIndex, x: start.x, z: start.z, score: this._heuristic(start.x, start.z, target.x, target.z) });
+    this._push(heap, {
+      index: startIndex,
+      x: start.x,
+      z: start.z,
+      score: this._heuristic(start.x, start.z, target.x, target.z),
+    });
 
     const directions = [
-      [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],
-      [-1, -1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [1, 1, Math.SQRT2]
+      [-1, 0, 1],
+      [1, 0, 1],
+      [0, -1, 1],
+      [0, 1, 1],
+      [-1, -1, Math.SQRT2],
+      [1, -1, Math.SQRT2],
+      [-1, 1, Math.SQRT2],
+      [1, 1, Math.SQRT2],
     ];
     let found = false;
     let closestIndex = startIndex;
@@ -233,7 +238,7 @@ export class NavigationGrid {
       const current = this._pop(heap);
       if (closed[current.index]) continue;
       closed[current.index] = 1;
-      
+
       const distToTarget = this._heuristic(current.x, current.z, target.x, target.z);
       if (distToTarget < closestDist) {
         closestDist = distToTarget;
@@ -249,7 +254,12 @@ export class NavigationGrid {
         const nx = current.x + dx;
         const nz = current.z + dz;
         if (!this.isWalkable(nx, nz)) continue;
-        if (dx !== 0 && dz !== 0 && (!this.isWalkable(current.x + dx, current.z) || !this.isWalkable(current.x, current.z + dz))) continue;
+        if (
+          dx !== 0 &&
+          dz !== 0 &&
+          (!this.isWalkable(current.x + dx, current.z) || !this.isWalkable(current.x, current.z + dz))
+        )
+          continue;
         const neighborIndex = this._index(nx, nz);
         if (closed[neighborIndex]) continue;
         const nextCost = costs[current.index] + moveCost;
@@ -278,7 +288,7 @@ export class NavigationGrid {
     for (let i = 1; i < cells.length; i += 1) {
       const direction = {
         x: Math.sign(cells[i].x - cells[i - 1].x),
-        z: Math.sign(cells[i].z - cells[i - 1].z)
+        z: Math.sign(cells[i].z - cells[i - 1].z),
       };
       if (lastDirection && (direction.x !== lastDirection.x || direction.z !== lastDirection.z)) {
         waypoints.push(this.cellToWorld(cells[i - 1].x, cells[i - 1].z));
@@ -297,7 +307,7 @@ export class NavigationGrid {
       requestedTarget,
       resolvedTarget,
       adjustedStart,
-      adjustedTarget
+      adjustedTarget,
     });
   }
 }

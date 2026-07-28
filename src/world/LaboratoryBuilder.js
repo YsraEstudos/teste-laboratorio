@@ -85,7 +85,7 @@ export class LaboratoryBuilder {
         metalness: 0.25,
         polygonOffset: true,
         polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2
+        polygonOffsetUnits: 2,
       }),
       corridorFloor: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(floorTexture, 8, 2),
@@ -94,7 +94,7 @@ export class LaboratoryBuilder {
         metalness: 0.32,
         polygonOffset: true,
         polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2
+        polygonOffsetUnits: 2,
       }),
       concrete: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(concreteTexture, 12, 10),
@@ -103,53 +103,53 @@ export class LaboratoryBuilder {
         metalness: 0.02,
         polygonOffset: true,
         polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2
+        polygonOffsetUnits: 2,
       }),
       wall: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(wallTexture, 1.5, 1),
         color: 0xe5edef,
         roughness: 0.67,
-        metalness: 0.04
+        metalness: 0.04,
       }),
       wallAccent: new THREE.MeshStandardMaterial({
         color: 0x243947,
         roughness: 0.42,
         metalness: 0.65,
-        map: this._cloneTexture(metalTexture, 2, 1)
+        map: this._cloneTexture(metalTexture, 2, 1),
       }),
       ceiling: new THREE.MeshStandardMaterial({
         color: 0x23313b,
         roughness: 0.7,
-        metalness: 0.2
+        metalness: 0.2,
       }),
       metal: new THREE.MeshStandardMaterial({
         color: 0x354854,
         roughness: 0.3,
         metalness: 0.82,
-        map: this._cloneTexture(metalTexture, 2, 1)
+        map: this._cloneTexture(metalTexture, 2, 1),
       }),
       darkMetal: new THREE.MeshStandardMaterial({
         color: 0x101a22,
         roughness: 0.28,
         metalness: 0.9,
-        map: this._cloneTexture(metalTexture, 1, 1)
+        map: this._cloneTexture(metalTexture, 1, 1),
       }),
       doorGlass: new THREE.MeshStandardMaterial({
         color: 0x1f3b4d,
         roughness: 0.15,
         metalness: 0.75,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.85,
       }),
       wood: new THREE.MeshStandardMaterial({
         color: 0x98633e,
         roughness: 0.72,
-        metalness: 0.04
+        metalness: 0.04,
       }),
       bark: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(barkTexture, 1, 1),
         color: 0x865033,
-        roughness: 0.9
+        roughness: 0.9,
       }),
       grass: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(grassTexture, 5, 5),
@@ -158,24 +158,24 @@ export class LaboratoryBuilder {
         metalness: 0,
         polygonOffset: true,
         polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2
+        polygonOffsetUnits: 2,
       }),
       grassBlade: new THREE.MeshStandardMaterial({
         color: 0x78bd64,
         roughness: 0.95,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
       }),
       foliage: new THREE.MeshStandardMaterial({
         color: 0x4e9a58,
-        roughness: 0.96
+        roughness: 0.96,
       }),
       foliageLight: new THREE.MeshStandardMaterial({
         color: 0x84c96a,
-        roughness: 0.94
+        roughness: 0.94,
       }),
       foliageDark: new THREE.MeshStandardMaterial({
         color: 0x2c6f4b,
-        roughness: 0.98
+        roughness: 0.98,
       }),
       water: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(waterTexture, 2, 2),
@@ -184,24 +184,24 @@ export class LaboratoryBuilder {
         metalness: 0.22,
         transparent: true,
         opacity: 0.8,
-        depthWrite: false
+        depthWrite: false,
       }),
       white: new THREE.MeshStandardMaterial({
         color: 0xf2f6f4,
         roughness: 0.48,
-        metalness: 0.04
+        metalness: 0.04,
       }),
       mannequin: new THREE.MeshStandardMaterial({
         color: 0xc4d4d7,
         roughness: 0.32,
-        metalness: 0.16
+        metalness: 0.16,
       }),
       mannequinAccent: new THREE.MeshStandardMaterial({
         color: 0x53c8d7,
         roughness: 0.28,
         metalness: 0.55,
         emissive: 0x0d6673,
-        emissiveIntensity: 0.7
+        emissiveIntensity: 0.7,
       }),
       panel: new THREE.MeshStandardMaterial({
         map: panelTexture,
@@ -209,33 +209,33 @@ export class LaboratoryBuilder {
         emissive: 0xffefd0,
         emissiveIntensity: 1.5,
         color: 0xffffff,
-        roughness: 0.25
+        roughness: 0.25,
       }),
       cyan: new THREE.MeshStandardMaterial({
         color: 0x49d7e8,
         emissive: 0x49d7e8,
         emissiveIntensity: 2.2,
         roughness: 0.3,
-        metalness: 0.22
+        metalness: 0.22,
       }),
       amber: new THREE.MeshStandardMaterial({
         color: 0xffb85c,
         emissive: 0xff8b2e,
         emissiveIntensity: 1.7,
         roughness: 0.35,
-        metalness: 0.18
+        metalness: 0.18,
       }),
       red: new THREE.MeshStandardMaterial({
         color: 0xf07170,
         emissive: 0x7e1e2c,
         emissiveIntensity: 0.75,
-        roughness: 0.4
+        roughness: 0.4,
       }),
       black: new THREE.MeshStandardMaterial({
         color: 0x080e12,
         roughness: 0.42,
-        metalness: 0.78
-      })
+        metalness: 0.78,
+      }),
     };
     Object.values(this.materials).forEach((material) => this._ownMaterial(material));
 
@@ -243,10 +243,16 @@ export class LaboratoryBuilder {
       labSign: TextureGenerator.createSignageTexture('LABORATORIO', { foreground: '#a9f0ff' }),
       entranceSign: TextureGenerator.createSignageTexture('ENTRADA', { foreground: '#ffd47a', border: '#f0a94b' }),
       mannequinsSign: TextureGenerator.createSignageTexture('ALA DE MANEQUINS', { foreground: '#a9f0ff' }),
-      objectsSign: TextureGenerator.createSignageTexture('ALA DE OBJETOS', { foreground: '#ffd47a', border: '#f0a94b' }),
-      forestSign: TextureGenerator.createSignageTexture('FLORESTA SERENA', { foreground: '#b5f49d', border: '#6ebc76' }),
+      objectsSign: TextureGenerator.createSignageTexture('ALA DE OBJETOS', {
+        foreground: '#ffd47a',
+        border: '#f0a94b',
+      }),
+      forestSign: TextureGenerator.createSignageTexture('FLORESTA SERENA', {
+        foreground: '#b5f49d',
+        border: '#6ebc76',
+      }),
       meadowSign: TextureGenerator.createSignageTexture('PRADO GENTIL', { foreground: '#d9ff9d', border: '#8dcc64' }),
-      monitor: TextureGenerator.createMonitorTexture()
+      monitor: TextureGenerator.createMonitorTexture(),
     };
   }
 
@@ -329,7 +335,7 @@ export class LaboratoryBuilder {
       emissive: 0x2c9eb0,
       emissiveIntensity: 0.55,
       roughness: 0.28,
-      metalness: 0.15
+      metalness: 0.15,
     });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
     mesh.position.set(x, y, z);
@@ -371,7 +377,7 @@ export class LaboratoryBuilder {
       color: 0x49d7e8,
       emissive: 0x24a7c0,
       emissiveIntensity: 1.2,
-      roughness: 0.2
+      roughness: 0.2,
     });
     const indicator = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.04), indicatorMat);
     indicator.position.set(width / 2 + 0.12, 0.2, 0.24);
@@ -398,12 +404,19 @@ export class LaboratoryBuilder {
     this.colliders.push(boxA, boxB);
 
     this.doors.push({
-      x, y, z, width, rotationY,
-      group, leftPanel, rightPanel, indicatorMat,
+      x,
+      y,
+      z,
+      width,
+      rotationY,
+      group,
+      leftPanel,
+      rightPanel,
+      indicatorMat,
       baseLeftX: -panelWidth / 2,
       baseRightX: panelWidth / 2,
       openAmount: 0,
-      isOpen: false
+      isOpen: false,
     });
   }
 
@@ -411,62 +424,62 @@ export class LaboratoryBuilder {
     this._addFloor(110, 92, 0, -18, this.materials.concrete, -0.08);
 
     this._addFloor(18, 11, 0, 3.5, this.materials.floor);
-        this._addWallX(-9, -2, 9);
+    this._addWallX(-9, -2, 9);
     this._addWallX(9, -2, 9);
     this._addWallZ(9, -9, 9);
     this._addWallZ(-2, -9, 9, [[-3, 3]]);
 
     this._addFloor(6, 8, 0, -6, this.materials.corridorFloor);
-        this._addWallX(-3, -10, -2);
+    this._addWallX(-3, -10, -2);
     this._addWallX(3, -10, -2);
 
     this._addFloor(20, 8, 0, -14, this.materials.floor);
-        this._addWallX(-10, -18, -10, [[-15, -11]]);
+    this._addWallX(-10, -18, -10, [[-15, -11]]);
     this._addWallX(10, -18, -10, [[-15, -11]]);
     this._addWallZ(-10, -10, 10, [[-3, 3]]);
     this._addWallZ(-18, -10, 10, [[-3, 3]]);
 
     this._addFloor(18, 4, -19, -13, this.materials.corridorFloor);
-        this._addWallZ(-15, -28, -10);
+    this._addWallZ(-15, -28, -10);
     this._addWallZ(-11, -28, -10);
 
     this._addFloor(18, 4, 19, -13, this.materials.corridorFloor);
-        this._addWallZ(-15, 10, 28);
+    this._addWallZ(-15, 10, 28);
     this._addWallZ(-11, 10, 28);
 
     this._addFloor(6, 12, 0, -24, this.materials.corridorFloor);
     this._addFloor(6, 4, 0, -32, this.materials.corridorFloor);
-        this._addWallX(-3, -30, -18);
+    this._addWallX(-3, -30, -18);
     this._addWallX(3, -30, -18);
 
     this._addFloor(25, 4, -15.5, -32, this.materials.corridorFloor);
-        this._addWallZ(-34, -28, -3);
+    this._addWallZ(-34, -28, -3);
     this._addWallZ(-30, -28, -3);
 
     this._addFloor(25, 4, 15.5, -32, this.materials.corridorFloor);
-        this._addWallZ(-34, 3, 28);
+    this._addWallZ(-34, 3, 28);
     this._addWallZ(-30, 3, 28);
 
     this._addFloor(12, 16, -34, -14, this.materials.floor);
-        this._addWallX(-40, -22, -6);
+    this._addWallX(-40, -22, -6);
     this._addWallX(-28, -22, -6, [[-15, -11]]);
     this._addWallZ(-22, -40, -28);
     this._addWallZ(-6, -40, -28);
 
     this._addFloor(12, 16, 34, -14, this.materials.floor);
-        this._addWallX(40, -22, -6);
+    this._addWallX(40, -22, -6);
     this._addWallX(28, -22, -6, [[-15, -11]]);
     this._addWallZ(-22, 28, 40);
     this._addWallZ(-6, 28, 40);
 
     this._addFloor(12, 14, -34, -37, this.materials.grass);
-        this._addWallX(-40, -44, -30);
+    this._addWallX(-40, -44, -30);
     this._addWallX(-28, -44, -30, [[-34, -30]]);
     this._addWallZ(-44, -40, -28);
     this._addWallZ(-30, -40, -28);
 
     this._addFloor(12, 14, 34, -37, this.materials.grass);
-        this._addWallX(40, -44, -30);
+    this._addWallX(40, -44, -30);
     this._addWallX(28, -44, -30, [[-34, -30]]);
     this._addWallZ(-44, 28, 40);
     this._addWallZ(-30, 28, 40);
@@ -524,7 +537,16 @@ export class LaboratoryBuilder {
     this._addPlant(7.1, 0, 6.6, 0.92);
 
     for (let i = 0; i < 5; i += 1) {
-      this._addBox(0.72, 0.035, 0.22, 0, 0.025, 0.9 - i * 0.7, i % 2 === 0 ? this.materials.amber : this.materials.cyan, false);
+      this._addBox(
+        0.72,
+        0.035,
+        0.22,
+        0,
+        0.025,
+        0.9 - i * 0.7,
+        i % 2 === 0 ? this.materials.amber : this.materials.cyan,
+        false,
+      );
     }
     this._addBox(0.06, 0.02, 7.5, -7.8, 0.02, 0.4, this.materials.cyan, false);
     this._addBox(0.06, 0.02, 7.5, 7.8, 0.02, 0.4, this.materials.cyan, false);
@@ -557,7 +579,10 @@ export class LaboratoryBuilder {
 
   _addPlant(x, y, z, scale = 1) {
     const group = new THREE.Group();
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.43, 0.55, 14), this.materials.ceramic || this.materials.white);
+    const pot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.34, 0.43, 0.55, 14),
+      this.materials.ceramic || this.materials.white,
+    );
     pot.position.y = 0.28;
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, 1.35, 8), this.materials.bark);
     stem.position.y = 1.1;
@@ -582,9 +607,14 @@ export class LaboratoryBuilder {
   _buildMannequinWing() {
     this._addSign('ALA DE MANEQUINS', this.textures.mannequinsSign, -39.84, 3.05, -13, Math.PI / 2, 4.7, 0.92);
     const positions = [
-      [-37.2, -18.5, 0], [-34, -18.5, 1], [-30.8, -18.5, 2],
-      [-37.2, -13.9, 1], [-34, -13.9, 0], [-30.8, -13.9, 3],
-      [-37.2, -9.2, 2], [-33.5, -9.2, 1]
+      [-37.2, -18.5, 0],
+      [-34, -18.5, 1],
+      [-30.8, -18.5, 2],
+      [-37.2, -13.9, 1],
+      [-34, -13.9, 0],
+      [-30.8, -13.9, 3],
+      [-37.2, -9.2, 2],
+      [-33.5, -9.2, 1],
     ];
     positions.forEach(([x, z, variant], index) => {
       this._addMannequin(x, z, variant, index % 3 === 0);
@@ -596,7 +626,7 @@ export class LaboratoryBuilder {
       emissive: 0x23626d,
       emissiveIntensity: 1.1,
       roughness: 0.25,
-      metalness: 0.1
+      metalness: 0.1,
     });
     for (const z of [-19.7, -8.1]) {
       this._addBox(0.08, 1.3, 2.2, -39.72, 2.15, z, monitorMaterial, false);
@@ -654,8 +684,12 @@ export class LaboratoryBuilder {
     pedestal.matrixAutoUpdate = false;
     pedestal.updateMatrix();
     this._addOwnedObject(pedestal);
-    this.colliders.push(new THREE.Box3(new THREE.Vector3(x - 0.9, 0, z - 0.9), new THREE.Vector3(x + 0.9, 0.22, z + 0.9)));
-    this.colliders.push(new THREE.Box3(new THREE.Vector3(x - 0.62, 0.22, z - 0.5), new THREE.Vector3(x + 0.62, 2.7, z + 0.5)));
+    this.colliders.push(
+      new THREE.Box3(new THREE.Vector3(x - 0.9, 0, z - 0.9), new THREE.Vector3(x + 0.9, 0.22, z + 0.9)),
+    );
+    this.colliders.push(
+      new THREE.Box3(new THREE.Vector3(x - 0.62, 0.22, z - 0.5), new THREE.Vector3(x + 0.62, 2.7, z + 0.5)),
+    );
 
     if (ring) {
       const ringMesh = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.035, 8, 32), this.materials.cyan);
@@ -671,14 +705,36 @@ export class LaboratoryBuilder {
     this._addSign('ALA DE OBJETOS', this.textures.objectsSign, 39.84, 3.05, -13, -Math.PI / 2, 4.4, 0.92);
 
     const crates = [
-      [30.4, 0.45, -19], [31.8, 0.45, -19], [31.1, 1.35, -19],
-      [36.2, 0.45, -18.3], [37.5, 0.45, -18.3], [36.85, 1.35, -18.3],
-      [30.8, 0.45, -8.6], [32.1, 0.45, -8.6], [36.8, 0.45, -8.8]
+      [30.4, 0.45, -19],
+      [31.8, 0.45, -19],
+      [31.1, 1.35, -19],
+      [36.2, 0.45, -18.3],
+      [37.5, 0.45, -18.3],
+      [36.85, 1.35, -18.3],
+      [30.8, 0.45, -8.6],
+      [32.1, 0.45, -8.6],
+      [36.8, 0.45, -8.8],
     ];
-    this._addInstanced(new THREE.BoxGeometry(1.2, 0.82, 1.2), this.materials.wood, crates.map(([x, y, z], index) => ({ x, y, z, r: index % 2 ? 0.12 : -0.08 })), true);
+    this._addInstanced(
+      new THREE.BoxGeometry(1.2, 0.82, 1.2),
+      this.materials.wood,
+      crates.map(([x, y, z], index) => ({ x, y, z, r: index % 2 ? 0.12 : -0.08 })),
+      true,
+    );
 
-    const barrels = [[35, 0.58, -13.2], [36.1, 0.58, -13.3], [37.2, 0.58, -13.4], [35.5, 1.75, -13.3], [30.4, 0.58, -10.1]];
-    this._addInstanced(new THREE.CylinderGeometry(0.43, 0.43, 1.1, 16), this.materials.darkMetal, barrels.map(([x, y, z]) => ({ x, y, z })), true);
+    const barrels = [
+      [35, 0.58, -13.2],
+      [36.1, 0.58, -13.3],
+      [37.2, 0.58, -13.4],
+      [35.5, 1.75, -13.3],
+      [30.4, 0.58, -10.1],
+    ];
+    this._addInstanced(
+      new THREE.CylinderGeometry(0.43, 0.43, 1.1, 16),
+      this.materials.darkMetal,
+      barrels.map(([x, y, z]) => ({ x, y, z })),
+      true,
+    );
 
     this._addTable(32.7, -13.1, 0);
     this._addTable(37.1, -9.4, Math.PI / 2);
@@ -692,10 +748,19 @@ export class LaboratoryBuilder {
     this._addServerRack(28.9, -8.7);
 
     const cones = [
-      [33.7, 0.36, -18.2], [34.8, 0.36, -17], [35.9, 0.36, -15.8],
-      [33.7, 0.36, -7.5], [34.8, 0.36, -8.7], [35.9, 0.36, -9.9]
+      [33.7, 0.36, -18.2],
+      [34.8, 0.36, -17],
+      [35.9, 0.36, -15.8],
+      [33.7, 0.36, -7.5],
+      [34.8, 0.36, -8.7],
+      [35.9, 0.36, -9.9],
     ];
-    this._addInstanced(new THREE.ConeGeometry(0.28, 0.72, 12), this.materials.amber, cones.map(([x, y, z]) => ({ x, y, z })), true);
+    this._addInstanced(
+      new THREE.ConeGeometry(0.28, 0.72, 12),
+      this.materials.amber,
+      cones.map(([x, y, z]) => ({ x, y, z })),
+      true,
+    );
 
     const monitorMaterial = new THREE.MeshStandardMaterial({
       map: this.textures.monitor,
@@ -703,7 +768,7 @@ export class LaboratoryBuilder {
       emissive: 0x356873,
       emissiveIntensity: 1.15,
       roughness: 0.25,
-      metalness: 0.1
+      metalness: 0.1,
     });
     for (let i = 0; i < 4; i += 1) {
       this._addBox(0.06, 1.25, 1.8, 39.72, 2.15, -19.2 + i * 3.6, monitorMaterial, false);
@@ -765,7 +830,10 @@ export class LaboratoryBuilder {
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 2.9), this.materials.metal);
       shelf.position.set(0, y, 0);
       group.add(shelf);
-      const item = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.34, 0.45), y % 1.5 < 0.3 ? this.materials.amber : this.materials.cyan);
+      const item = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.34, 0.45),
+        y % 1.5 < 0.3 ? this.materials.amber : this.materials.cyan,
+      );
       item.position.set(-0.15, y + 0.23, (y % 1.2) - 0.5);
       group.add(item);
     }
@@ -784,7 +852,16 @@ export class LaboratoryBuilder {
   _addServerRack(x, z) {
     this._addBox(1.05, 3.2, 1.25, x, 1.6, z, this.materials.darkMetal);
     for (let i = 0; i < 4; i += 1) {
-      this._addBox(0.04, 0.1, 0.16, x - 0.54, 0.65 + i * 0.62, z - 0.08, i % 2 ? this.materials.amber : this.materials.cyan, false);
+      this._addBox(
+        0.04,
+        0.1,
+        0.16,
+        x - 0.54,
+        0.65 + i * 0.62,
+        z - 0.08,
+        i % 2 ? this.materials.amber : this.materials.cyan,
+        false,
+      );
     }
   }
 
@@ -793,11 +870,17 @@ export class LaboratoryBuilder {
     this._addSign('PRADO GENTIL', this.textures.meadowSign, 39.84, 3.05, -37, -Math.PI / 2, 4.2, 0.92);
 
     const forestTrees = [
-      [-37.1, -41.2, 1.1], [-32.5, -41.1, 0.82], [-36.2, -35.6, 0.92], [-31.4, -34.3, 1.08]
+      [-37.1, -41.2, 1.1],
+      [-32.5, -41.1, 0.82],
+      [-36.2, -35.6, 0.92],
+      [-31.4, -34.3, 1.08],
     ];
     forestTrees.forEach(([x, z, scale]) => this._addTree(x, z, scale));
     const meadowTrees = [
-      [31.2, -41.2, 0.95], [36.8, -41.4, 1.08], [32.2, -35, 0.82], [37, -34.2, 0.92]
+      [31.2, -41.2, 0.95],
+      [36.8, -41.4, 1.08],
+      [32.2, -35, 0.82],
+      [37, -34.2, 0.92],
     ];
     meadowTrees.forEach(([x, z, scale]) => this._addTree(x, z, scale));
 
@@ -840,7 +923,9 @@ export class LaboratoryBuilder {
     });
     this._addOwnedObject(group);
     const r = 0.6 * scale;
-    this.colliders.push(new THREE.Box3(new THREE.Vector3(x - r, 0, z - r), new THREE.Vector3(x + r, 2.8 * scale, z + r)));
+    this.colliders.push(
+      new THREE.Box3(new THREE.Vector3(x - r, 0, z - r), new THREE.Vector3(x + r, 2.8 * scale, z + r)),
+    );
   }
 
   _addGrass(centerX, centerZ, count, seed) {
@@ -853,7 +938,14 @@ export class LaboratoryBuilder {
       const z = centerZ + Math.sin(angle) * radius * 1.3;
       if (x < centerX - 5 || x > centerX + 5 || z < centerZ - 5.5 || z > centerZ + 5.5) continue;
       entries.push({ x, y: 0.36, z, r: (i * 0.71) % Math.PI, sx: 0.8 + (i % 4) * 0.12, sy: 0.8 + (i % 5) * 0.1 });
-      offsets.push({ x, y: 0.36, z, r: ((i * 0.71) % Math.PI) + Math.PI / 2, sx: 0.8 + (i % 4) * 0.12, sy: 0.8 + (i % 5) * 0.1 });
+      offsets.push({
+        x,
+        y: 0.36,
+        z,
+        r: ((i * 0.71) % Math.PI) + Math.PI / 2,
+        sx: 0.8 + (i % 4) * 0.12,
+        sy: 0.8 + (i % 5) * 0.1,
+      });
     }
     const geometry = new THREE.PlaneGeometry(0.24, 0.72);
     this._addInstanced(geometry, this.materials.grassBlade, entries, false);
@@ -893,7 +985,10 @@ export class LaboratoryBuilder {
 
     this._addDoorFrame(0, 2, -46, 6, 0);
 
-    const testSign = TextureGenerator.createSignageTexture('SALA DE TESTES // CONFIRMED 42', { foreground: '#ffd36d', border: '#d77a26' });
+    const testSign = TextureGenerator.createSignageTexture('SALA DE TESTES // CONFIRMED 42', {
+      foreground: '#ffd36d',
+      border: '#d77a26',
+    });
     this._addSign('SALA DE TESTES // CONFIRMED 42', testSign, 0, 3.1, -46.2, 0, 6.2, 1.1);
 
     // Clean Testing Room Floor Markings
@@ -906,14 +1001,21 @@ export class LaboratoryBuilder {
     const rockMat = new THREE.MeshStandardMaterial({ map: rockTex, roughness: 0.9, metalness: 0.1 });
 
     const paperTex = TextureGenerator.createPaperSheetTexture();
-    const paperMat = this._ownMaterial(new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.65 }));
+    const paperMat = this._ownMaterial(
+      new THREE.MeshStandardMaterial({ map: paperTex, side: THREE.DoubleSide, roughness: 0.65 }),
+    );
     const leafTex = TextureGenerator.createTreeLeafTexture();
-    const leafMat = this._ownMaterial(new THREE.MeshStandardMaterial({ map: leafTex, side: THREE.DoubleSide, alphaTest: 0.15, roughness: 0.5 }));
+    const leafMat = this._ownMaterial(
+      new THREE.MeshStandardMaterial({ map: leafTex, side: THREE.DoubleSide, alphaTest: 0.15, roughness: 0.5 }),
+    );
 
     // 1. Loose Paper Sheets (Ultra Light - Level 1 Target) - Positioned cleanly on floor (Y = 0.04)
     const paperPositions = [
-      [-1.2, 0.04, -51], [0.8, 0.04, -52], [-2.5, 0.04, -54],
-      [1.5, 0.04, -55], [-0.5, 0.04, -56]
+      [-1.2, 0.04, -51],
+      [0.8, 0.04, -52],
+      [-2.5, 0.04, -54],
+      [1.5, 0.04, -55],
+      [-0.5, 0.04, -56],
     ];
     for (const [x, y, z] of paperPositions) {
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.72), paperMat.clone());
@@ -931,14 +1033,17 @@ export class LaboratoryBuilder {
         velocity: new THREE.Vector3(),
         mass: 0.15,
         type: 'folha_papel',
-        name: 'Folha de Papel (Confirmed 42)'
+        name: 'Folha de Papel (Confirmed 42)',
       });
     }
 
     // 2. Tree Leaves (Ultra Light Organic - Level 1 Target) - Positioned cleanly on floor (Y = 0.04)
     const treeLeafPositions = [
-      [-2.1, 0.04, -50], [2.2, 0.04, -51.5], [-1.8, 0.04, -55],
-      [0.4, 0.04, -53], [2.7, 0.04, -56]
+      [-2.1, 0.04, -50],
+      [2.2, 0.04, -51.5],
+      [-1.8, 0.04, -55],
+      [0.4, 0.04, -53],
+      [2.7, 0.04, -56],
     ];
     for (const [x, y, z] of treeLeafPositions) {
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.58), leafMat.clone());
@@ -956,13 +1061,15 @@ export class LaboratoryBuilder {
         velocity: new THREE.Vector3(),
         mass: 0.08,
         type: 'folha_arvore',
-        name: 'Folha de Árvore'
+        name: 'Folha de Árvore',
       });
     }
 
     // 3. Cardboard Boxes (Level 2+ Target)
     const cardboardPositions = [
-      [-4.5, 0.45, -56], [-3.0, 0.45, -53], [-5.5, 0.45, -52]
+      [-4.5, 0.45, -56],
+      [-3.0, 0.45, -53],
+      [-5.5, 0.45, -52],
     ];
     for (const [x, y, z] of cardboardPositions) {
       const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
@@ -979,13 +1086,15 @@ export class LaboratoryBuilder {
         velocity: new THREE.Vector3(),
         mass: 1.5,
         type: 'papelao',
-        name: 'Papelão Leve (Confirmed 42)'
+        name: 'Papelão Leve (Confirmed 42)',
       });
     }
 
     // 4. Heavy Rocks (Level 5+ Target)
     const rockPositions = [
-      [4.5, 0.65, -56], [3.2, 0.65, -53], [5.8, 0.65, -52]
+      [4.5, 0.65, -56],
+      [3.2, 0.65, -53],
+      [5.8, 0.65, -52],
     ];
     for (const [x, y, z] of rockPositions) {
       const geometry = new THREE.DodecahedronGeometry(0.65, 1);
@@ -1003,7 +1112,7 @@ export class LaboratoryBuilder {
         velocity: new THREE.Vector3(),
         mass: 25.0,
         type: 'pedra',
-        name: 'Pedra Massiva (Confirmed 42)'
+        name: 'Pedra Massiva (Confirmed 42)',
       });
     }
 
@@ -1029,7 +1138,7 @@ export class LaboratoryBuilder {
       [0, -10.7, 0.04, 6.5, this.materials.amber],
       [-7.2, -14, 5.2, 0.04, this.materials.cyan],
       [7.2, -14, 5.2, 0.04, this.materials.cyan],
-      [0, -17.3, 0.04, 4.5, this.materials.amber]
+      [0, -17.3, 0.04, 4.5, this.materials.amber],
     ];
     for (const [x, z, width, depth, mat] of hubLines) this._addBox(width, 0.025, depth, x, 0.03, z, mat, false);
 

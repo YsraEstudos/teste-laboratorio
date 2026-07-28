@@ -18,14 +18,14 @@ export class RadialMenu {
         title: 'SALA DE TESTES',
         icon: '🧭',
         description: 'Navegar o Wind Child até a Sala de Testes (Z = -54).',
-        action: () => this._moveToTestingRoom()
+        action: () => this._moveToTestingRoom(),
       },
       {
         id: 'call-child',
         title: 'CHARMAR CRIANÇA',
         icon: '🚶',
         description: 'Trazer o Wind Child para perto da posição do jogador.',
-        action: () => this._callToPlayer()
+        action: () => this._callToPlayer(),
       },
       {
         id: 'power-level',
@@ -33,29 +33,29 @@ export class RadialMenu {
         icon: '⚡',
         description: 'Ajustar o nível de poder elemental do Wind Child (1 a 10).',
         hasSubmenu: true,
-        action: (level) => this._setPowerLevel(level)
+        action: (level) => this._setPowerLevel(level),
       },
       {
         id: 'restore-status',
         title: 'RESTAURAR STATUS',
         icon: '💚',
         description: 'Restaurar a Felicidade (100%) e Energia (100%) do Wind Child.',
-        action: () => this._restoreStatus()
+        action: () => this._restoreStatus(),
       },
       {
         id: 'wind-blast',
         title: 'RÁFAGA DE VENTO',
         icon: '🌀',
         description: 'Disparar uma potente ráfaga aerodinâmica com efeitos visuais.',
-        action: () => this._triggerWindBlast()
+        action: () => this._triggerWindBlast(),
       },
       {
         id: 'inspect-details',
         title: 'INSPECIONAR',
         icon: '📊',
         description: 'Exibir telemetria completa e diagnóstico do Wind Child.',
-        action: () => this._inspectDetails()
-      }
+        action: () => this._inspectDetails(),
+      },
     ];
 
     this._createDOM();
@@ -107,7 +107,7 @@ export class RadialMenu {
         `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
         `L ${x3} ${y3}`,
         `A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4}`,
-        'Z'
+        'Z',
       ].join(' ');
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -288,7 +288,7 @@ export class RadialMenu {
     if (nrgVal) nrgVal.textContent = `${Math.round(nrg)}%`;
 
     const powerBtns = this.powerSelector.querySelectorAll('.power-btn');
-    powerBtns.forEach(btn => {
+    powerBtns.forEach((btn) => {
       const lvl = parseInt(btn.dataset.level, 10);
       if (lvl === pLvl) {
         btn.classList.add('active');

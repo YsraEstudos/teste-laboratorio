@@ -11,21 +11,18 @@ function createController(result) {
     destination: new THREE.Vector3(9, 0, 9),
     destinationMarker: {
       position: new THREE.Vector3(9, 0, 9),
-      visible: true
-    }
+      visible: true,
+    },
   };
 }
 
 describe('PlayerController structured navigation result', () => {
   it('preserves click movement by applying waypoints from a complete result', () => {
-    const waypoints = [
-      new THREE.Vector3(1, 0, 0),
-      new THREE.Vector3(2, 0, 0)
-    ];
+    const waypoints = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(2, 0, 0)];
     const controller = createController({
       status: 'complete',
       reason: null,
-      waypoints
+      waypoints,
     });
 
     PlayerController.prototype.moveTo.call(controller, 2, 0);
@@ -42,7 +39,7 @@ describe('PlayerController structured navigation result', () => {
     const controller = createController({
       status: 'partial',
       reason: 'target-unreachable',
-      waypoints: [new THREE.Vector3(1, 0, 0)]
+      waypoints: [new THREE.Vector3(1, 0, 0)],
     });
 
     PlayerController.prototype.moveTo.call(controller, 4, 0);

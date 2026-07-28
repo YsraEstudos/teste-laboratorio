@@ -72,21 +72,21 @@ export class WindField {
   sample(position, out) {
     this._applyZone(position.x, position.z);
     const height = THREE.MathUtils.smoothstep(position.y, 0.04, 2.8);
-    const roomStrength = this.baseStrength * this._zoneMultiplier
-      + this.gustStrength * this.gustIntensity * this._zoneGustMultiplier;
-    const directionalNoise = Math.sin(position.z * 0.13 + this.time * 0.55)
-      + Math.sin(position.x * 0.21 - this.time * 0.38) * 0.55;
-    const angle = this.baseAngle + this._zoneAngleOffset + directionalNoise * 0.12
-      + this.gustAngleOffset * this.gustIntensity;
+    const roomStrength =
+      this.baseStrength * this._zoneMultiplier + this.gustStrength * this.gustIntensity * this._zoneGustMultiplier;
+    const directionalNoise =
+      Math.sin(position.z * 0.13 + this.time * 0.55) + Math.sin(position.x * 0.21 - this.time * 0.38) * 0.55;
+    const angle =
+      this.baseAngle + this._zoneAngleOffset + directionalNoise * 0.12 + this.gustAngleOffset * this.gustIntensity;
 
     // Near-floor flow is slower, while low-frequency curls make dust peel away from walls.
     const speed = roomStrength * (0.18 + height * 0.82);
-    const curlX = Math.sin(position.z * 0.37 + this.time * 1.7) * 0.38
-      + Math.cos(position.y * 1.2 + this.time * 1.1) * 0.14;
-    const curlZ = Math.cos(position.x * 0.31 - this.time * 1.45) * 0.38
-      + Math.sin(position.y * 0.9 + this.time * 1.3) * 0.14;
-    const lift = Math.sin(position.x * 0.26 + position.z * 0.18 + this.time * 1.8)
-      * (0.08 + this.gustIntensity * 0.28) * height;
+    const curlX =
+      Math.sin(position.z * 0.37 + this.time * 1.7) * 0.38 + Math.cos(position.y * 1.2 + this.time * 1.1) * 0.14;
+    const curlZ =
+      Math.cos(position.x * 0.31 - this.time * 1.45) * 0.38 + Math.sin(position.y * 0.9 + this.time * 1.3) * 0.14;
+    const lift =
+      Math.sin(position.x * 0.26 + position.z * 0.18 + this.time * 1.8) * (0.08 + this.gustIntensity * 0.28) * height;
 
     out.set(Math.cos(angle) * speed + curlX, lift, Math.sin(angle) * speed + curlZ);
     return out;
@@ -94,8 +94,7 @@ export class WindField {
 
   getStrengthAt(position) {
     this._applyZone(position.x, position.z);
-    return this.baseStrength * this._zoneMultiplier
-      + this.gustStrength * this.gustIntensity * this._zoneGustMultiplier;
+    return this.baseStrength * this._zoneMultiplier + this.gustStrength * this.gustIntensity * this._zoneGustMultiplier;
   }
 
   _applyZone(x, z) {

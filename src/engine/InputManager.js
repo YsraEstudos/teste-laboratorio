@@ -11,7 +11,7 @@ export class InputManager {
       right: false,
       sprint: false,
       crouch: false,
-      jump: false
+      jump: false,
     };
 
     this.mouseDeltaX = 0;
@@ -123,8 +123,7 @@ export class InputManager {
     this._target.dispatchEvent(new CustomEvent('lockchange', { detail: { locked: this.isLocked } }));
   }
 
-  _onPointerLockError() {
-  }
+  _onPointerLockError() {}
 
   _onWheel(e) {
     if (this.onWheel) {

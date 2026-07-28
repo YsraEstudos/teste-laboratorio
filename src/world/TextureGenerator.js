@@ -399,7 +399,8 @@ export class TextureGenerator {
       ctx.strokeStyle = '#f07170';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(35, 0); ctx.lineTo(35, height);
+      ctx.moveTo(35, 0);
+      ctx.lineTo(35, height);
       ctx.stroke();
 
       // Blue horizontal lines
@@ -407,7 +408,8 @@ export class TextureGenerator {
       ctx.lineWidth = 1;
       for (let y = 30; y < height; y += 18) {
         ctx.beginPath();
-        ctx.moveTo(40, y); ctx.lineTo(width - 15, y);
+        ctx.moveTo(40, y);
+        ctx.lineTo(width - 15, y);
         ctx.stroke();
       }
 
@@ -452,14 +454,17 @@ export class TextureGenerator {
       ctx.strokeStyle = '#2d8433';
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(0, -105); ctx.lineTo(0, 105);
+      ctx.moveTo(0, -105);
+      ctx.lineTo(0, 105);
       ctx.stroke();
 
       ctx.lineWidth = 2;
       for (let i = -80; i < 80; i += 25) {
         ctx.beginPath();
-        ctx.moveTo(0, i); ctx.lineTo(40, i - 20);
-        ctx.moveTo(0, i); ctx.lineTo(-40, i - 20);
+        ctx.moveTo(0, i);
+        ctx.lineTo(40, i - 20);
+        ctx.moveTo(0, i);
+        ctx.lineTo(-40, i - 20);
         ctx.stroke();
       }
 

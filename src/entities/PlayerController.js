@@ -66,7 +66,7 @@ export class PlayerController {
     // Soft Ground Shadow
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.85, 24),
-      new THREE.MeshBasicMaterial({ color: 0x040b12, transparent: true, opacity: 0.38, depthWrite: false })
+      new THREE.MeshBasicMaterial({ color: 0x040b12, transparent: true, opacity: 0.38, depthWrite: false }),
     );
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.015;
@@ -78,9 +78,25 @@ export class PlayerController {
     const trimMat = new THREE.MeshStandardMaterial({ color: 0xdff5ff, roughness: 0.35 });
     const pantsMat = new THREE.MeshStandardMaterial({ color: 0x182836, roughness: 0.6, metalness: 0.1 });
     const bootMat = new THREE.MeshStandardMaterial({ color: 0x0c141d, roughness: 0.4 });
-    const soleMat = new THREE.MeshStandardMaterial({ color: 0x49d7e8, emissive: 0x49d7e8, emissiveIntensity: 1.5, roughness: 0.2 });
-    const visorMat = new THREE.MeshStandardMaterial({ color: 0x57f0ff, emissive: 0x24a7c0, emissiveIntensity: 1.8, transparent: true, opacity: 0.82 });
-    const badgeMat = new THREE.MeshStandardMaterial({ color: 0xffd36d, emissive: 0xd77a26, emissiveIntensity: 1.4, roughness: 0.3 });
+    const soleMat = new THREE.MeshStandardMaterial({
+      color: 0x49d7e8,
+      emissive: 0x49d7e8,
+      emissiveIntensity: 1.5,
+      roughness: 0.2,
+    });
+    const visorMat = new THREE.MeshStandardMaterial({
+      color: 0x57f0ff,
+      emissive: 0x24a7c0,
+      emissiveIntensity: 1.8,
+      transparent: true,
+      opacity: 0.82,
+    });
+    const badgeMat = new THREE.MeshStandardMaterial({
+      color: 0xffd36d,
+      emissive: 0xd77a26,
+      emissiveIntensity: 1.4,
+      roughness: 0.3,
+    });
     const gloveMat = new THREE.MeshStandardMaterial({ color: 0x1f3442, roughness: 0.5, metalness: 0.3 });
 
     this.body = new THREE.Group();
@@ -236,8 +252,8 @@ export class PlayerController {
         polygonOffset: true,
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2,
-        side: THREE.DoubleSide
-      })
+        side: THREE.DoubleSide,
+      }),
     );
     this.selectionRing.rotation.x = -Math.PI / 2;
     this.selectionRing.position.y = 0.04;
@@ -260,8 +276,8 @@ export class PlayerController {
         polygonOffset: true,
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -2,
-        side: THREE.DoubleSide
-      })
+        side: THREE.DoubleSide,
+      }),
     );
     markerRing.rotation.x = -Math.PI / 2;
     markerRing.position.y = 0.035;
@@ -275,8 +291,8 @@ export class PlayerController {
         depthWrite: false,
         polygonOffset: true,
         polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2
-      })
+        polygonOffsetUnits: -2,
+      }),
     );
     markerDot.rotation.x = -Math.PI / 2;
     markerDot.position.y = 0.04;
@@ -356,7 +372,8 @@ export class PlayerController {
 
   update(delta, colliders, doors = []) {
     this.time += delta;
-    const hasKeyboardInput = this.input.keys.forward || this.input.keys.back || this.input.keys.left || this.input.keys.right;
+    const hasKeyboardInput =
+      this.input.keys.forward || this.input.keys.back || this.input.keys.left || this.input.keys.right;
     if (hasKeyboardInput) {
       this.path.length = 0;
       this.destination = null;
@@ -505,7 +522,7 @@ export class PlayerController {
       // Looking Around Routine (Triggered after 2 seconds idle)
       if (this.idleTime > 2.0) {
         this.lookAroundTimer += delta;
-        const cycle = (this.lookAroundTimer % 6.5);
+        const cycle = this.lookAroundTimer % 6.5;
 
         let targetHeadY = 0;
         let targetHeadX = 0;

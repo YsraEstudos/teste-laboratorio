@@ -35,7 +35,7 @@ export class WindDustSystem {
       depthWrite: false,
       blending: THREE.NormalBlending,
       side: THREE.DoubleSide,
-      vertexColors: true
+      vertexColors: true,
     });
 
     this.mesh = new THREE.InstancedMesh(geometry, material, this.count);
@@ -56,7 +56,7 @@ export class WindDustSystem {
         size: 0.05 + Math.random() * 0.13,
         phase: Math.random() * Math.PI * 2,
         collisions: 0,
-        active: false
+        active: false,
       };
       this.particles.push(particle);
       this.mesh.setMatrixAt(i, this._hiddenMatrix);
@@ -123,7 +123,7 @@ export class WindDustSystem {
     p.position.set(
       center.x + Math.cos(angle) * radius,
       lifted ? 0.04 + Math.random() * 1.8 : 0.04 + Math.random() * 0.42,
-      center.z + Math.sin(angle) * radius
+      center.z + Math.sin(angle) * radius,
     );
     p.previous.copy(p.position);
     p.velocity.set((Math.random() - 0.5) * 0.25, Math.random() * 0.1, (Math.random() - 0.5) * 0.25);
@@ -160,10 +160,22 @@ export class WindDustSystem {
     let distance = left;
     this._normal.set(-1, 0, 0);
 
-    if (right < distance) { distance = right; this._normal.set(1, 0, 0); }
-    if (bottom < distance) { distance = bottom; this._normal.set(0, -1, 0); }
-    if (top < distance) { distance = top; this._normal.set(0, 1, 0); }
-    if (near < distance) { distance = near; this._normal.set(0, 0, -1); }
+    if (right < distance) {
+      distance = right;
+      this._normal.set(1, 0, 0);
+    }
+    if (bottom < distance) {
+      distance = bottom;
+      this._normal.set(0, -1, 0);
+    }
+    if (top < distance) {
+      distance = top;
+      this._normal.set(0, 1, 0);
+    }
+    if (near < distance) {
+      distance = near;
+      this._normal.set(0, 0, -1);
+    }
     if (far < distance) this._normal.set(0, 0, 1);
 
     p.position.copy(p.previous).addScaledVector(this._normal, 0.035);
@@ -197,7 +209,7 @@ export class WindDustSystem {
   }
 
   _gridKey(x, z) {
-    return x * 73856093 ^ z * 19349663;
+    return (x * 73856093) ^ (z * 19349663);
   }
 
   _createDustTexture() {

@@ -249,7 +249,8 @@ export class PerformanceProfiler {
     if (this.trianglesEl) this.trianglesEl.textContent = this.triangles.toLocaleString();
     if (this.vramAssetsEl) this.vramAssetsEl.textContent = `${this.geometriesCount} GEO / ${this.texturesCount} TEX`;
     if (this.jsMemoryEl) {
-      this.jsMemoryEl.textContent = this.usedHeapMB > 0 ? `${this.usedHeapMB} MB / ${this.totalHeapMB} MB` : 'N/A (Navegador)';
+      this.jsMemoryEl.textContent =
+        this.usedHeapMB > 0 ? `${this.usedHeapMB} MB / ${this.totalHeapMB} MB` : 'N/A (Navegador)';
     }
   }
 

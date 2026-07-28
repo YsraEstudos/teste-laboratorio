@@ -82,7 +82,6 @@ export class Game {
       this.radialMenu.show(event.clientX, event.clientY);
     };
     canvas.addEventListener('contextmenu', this._onContextMenu);
-
   }
 
   /**
@@ -152,7 +151,8 @@ export class Game {
       this.windFX.triggerWindBlast(childPos, targetPos, this.windChild.powerLevel);
 
       // Calculate Effective Power: PowerLevel (1-10) * Happiness% * Energy%
-      const effectivePower = this.windChild.powerLevel * (this.windChild.happiness / 100) * (this.windChild.energy / 100);
+      const effectivePower =
+        this.windChild.powerLevel * (this.windChild.happiness / 100) * (this.windChild.energy / 100);
       const pushVector = new THREE.Vector3().subVectors(targetPos, childPos).normalize();
 
       if (closestObj.type === 'folha_papel' || closestObj.type === 'folha_arvore') {
