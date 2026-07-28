@@ -5,6 +5,7 @@ import { PlayerController } from './entities/PlayerController.js';
 import { WindChild } from './entities/WindChild.js';
 import { WindParticleSystem } from './effects/WindParticleSystem.js';
 import { WindAbilitySystem } from './abilities/WindAbilitySystem.js';
+import { applyWindImpulse } from './wind/WindImpulse.js';
 import { WindSystem } from './wind/WindSystem.js';
 import { RadialMenu } from './ui/RadialMenu.js';
 import { TacMap } from './ui/TacMap.js';
@@ -16,11 +17,6 @@ import { NavigationGrid } from './world/NavigationGrid.js';
 export class Game {
   static CONSTANTS = {
     WIND_BLAST_RANGE_SQ: 18.0 ** 2,
-    PAPER_LEAF_MIN_POWER: 0.0,
-    CARDBOARD_MIN_POWER: 1.7,
-    ROCK_MIN_POWER: 4.5,
-    CARDBOARD_MAX_SPEED: 12.5,
-    ROCK_MAX_SPEED: 6.5,
   };
   constructor() {
     this.clock = new THREE.Clock();
@@ -156,31 +152,7 @@ export class Game {
     // Calculate Effective Power: PowerLevel (1-10) * Happiness% * Energy%
     const effectivePower = powerLevel * (happiness / 100) * (energy / 100);
     const pushVector = new THREE.Vector3().subVectors(target, origin).normalize();
-
-    if (targetObject.type === 'folha_papel' || targetObject.type === 'folha_arvore') {
-      // Loose paper sheets & tree leaves: Pushed easily at Power Level 1!
-      const speed = 4.5 + effectivePower * 1.2;
-      targetObject.velocity.copy(pushVector).multiplyScalar(speed);
-      targetObject.velocity.y = 3.5 + effectivePower * 0.8; // Upward air lift!
-    } else if (targetObject.type === 'papelao') {
-      // Cardboard Box: Requires Power Level 2+ (effectivePower >= Game.CONSTANTS.CARDBOARD_MIN_POWER)
-      if (effectivePower >= 1.7) {
-        const speed = Math.min(Game.CONSTANTS.CARDBOARD_MAX_SPEED, 3.2 + (effectivePower - 1.5) * 1.2);
-        targetObject.velocity.copy(pushVector).multiplyScalar(speed);
-      } else {
-        // Level 1: Too weak for cardboard box! Shakes slightly
-        targetObject.velocity.copy(pushVector).multiplyScalar(0.35);
-      }
-    } else if (targetObject.type === 'pedra') {
-      // Heavy Rock: Requires Power Level 5+ (effectivePower >= Game.CONSTANTS.ROCK_MIN_POWER)
-      if (effectivePower >= 4.5) {
-        const speed = Math.min(Game.CONSTANTS.ROCK_MAX_SPEED, (effectivePower - 4.0) * 0.95);
-        targetObject.velocity.copy(pushVector).multiplyScalar(speed);
-      } else {
-        // Too heavy for Level 1-4! Shakes slightly
-        targetObject.velocity.copy(pushVector).multiplyScalar(0.35);
-      }
-    }
+    applyWindImpulse(targetObject, pushVector, effectivePower);
   }
 
   /**
