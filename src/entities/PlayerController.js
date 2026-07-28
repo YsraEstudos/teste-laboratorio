@@ -25,11 +25,6 @@ export class PlayerController {
     this.time = 0;
     this.cameraZoom = 1;
 
-    // Wind Child Attributes & Stats
-    this.name = 'Wind Child';
-    this.powerLevel = 5;
-    this.happiness = 85;
-    this.energy = 100;
     this._activeEffects = [];
 
     // Animation state variables

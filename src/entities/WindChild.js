@@ -20,6 +20,7 @@ import * as THREE from 'three';
 export class WindChild {
   constructor(scene, options = {}) {
     this.scene = scene;
+    this.name = 'Wind Child';
 
     // Core attributes with boundary safety
     this._powerLevel = Math.max(1, Math.min(10, options.powerLevel ?? 5));

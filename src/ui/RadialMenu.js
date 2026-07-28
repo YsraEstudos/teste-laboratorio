@@ -239,6 +239,11 @@ export class RadialMenu {
    * @param {number} y The Y coordinate.
    */
   show(x, y) {
+    if (!this.game.windChild) {
+      this.hide();
+      return;
+    }
+
     this.position = { x, y };
     this.active = true;
 
@@ -268,7 +273,7 @@ export class RadialMenu {
   }
 
   _updateTelemetry() {
-    const child = this.game.windChild || this.game.player;
+    const child = this.game.windChild;
     if (!child) return;
 
     const powerVal = document.getElementById('radial-power-val');
@@ -373,7 +378,7 @@ export class RadialMenu {
     const child = this.game.windChild;
     if (!child) return;
     const room = this.game.lab ? this.game.lab.getRoomNameAt(child.position.x, child.position.z) : 'SALA DE TESTES';
-    const msg = `WIND CHILD (CONFIRMED 42 SUBJECT):\n• Local: ${room || 'SALA DE TESTES'}\n• Nível de Poder: ${child.powerLevel}/10\n• Felicidade: ${child.happiness}%\n• Energia: ${child.energy}%`;
+    const msg = `${child.name} (CONFIRMED 42 SUBJECT):\n• Local: ${room || 'SALA DE TESTES'}\n• Nível de Poder: ${child.powerLevel}/10\n• Felicidade: ${child.happiness}%\n• Energia: ${child.energy}%`;
     alert(msg);
   }
 }
