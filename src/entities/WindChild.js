@@ -587,13 +587,13 @@ export class WindChild {
     this.chargeWeight += (targetChargeWeight - this.chargeWeight) * Math.min(1.0, delta * 8.0);
 
     // 1. Idle Floating & Breathing
-    this._updateFloatingAndBreathing(animSpeed, happinessMult);
+    this._updateFloatingAndBreathing(animSpeed, happinessMult, energyMult);
 
     // 2. Autonomous Looking Around
     this._updateLookingAround(delta);
 
     // 3. Hand-Trembling Wind Charge Pose ('colocar a mão para frente e tremer')
-    this._updateChargePose();
+    this._updateChargePose(animSpeed);
 
     // 4. Wind Blast Gesture & Shockwave
     this._updateBlastGesture(delta);
@@ -718,7 +718,7 @@ export class WindChild {
     }
   }
 
-  _updateFloatingAndBreathing(animSpeed, happinessMult) {
+  _updateFloatingAndBreathing(animSpeed, happinessMult, energyMult) {
     // Vertical Floating (higher happiness = more buoyant bounce)
     const floatFreq = 2.2 * animSpeed;
     const floatAmp = 0.03 + happinessMult * 0.04;
@@ -772,7 +772,7 @@ export class WindChild {
     this.headPivot.rotation.y = this.headCurrentRotation.y;
   }
 
-  _updateChargePose() {
+  _updateChargePose(animSpeed) {
     // Tremble parameters scaling with powerLevel (1 to 10)
     const trembleFreq = 28.0 + this._powerLevel * 6.0;
     const trembleAmp = (0.008 + this._powerLevel * 0.0035) * this.chargeWeight;
@@ -835,7 +835,7 @@ export class WindChild {
     const progress = Math.min(1.0, this.blastTimer / this.blastDuration);
 
     // Arm push gesture curve (fast explosive forward thrust, then ease back)
-    let blastArmX;
+    let blastArmX = -Math.PI * 0.45;
     if (progress < 0.3) {
       // Explosive push
       const pushFactor = progress / 0.3;

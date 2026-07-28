@@ -420,6 +420,10 @@ export class TacMap {
       ctx.translate(p.cx, p.cy);
 
       // Directional Cone
+      const coneLength = 22;
+      const dirX = Math.sin(rotY) * coneLength;
+      const dirY = Math.cos(rotY) * coneLength;
+
       ctx.fillStyle = 'rgba(73, 215, 232, 0.35)';
       ctx.beginPath();
       ctx.moveTo(0, 0);
