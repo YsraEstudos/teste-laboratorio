@@ -77,6 +77,8 @@ export class WindAbilitySystem {
     this.state = 'ready';
     this.paused = true;
     this.disposed = true;
+    this.onRelease = null;
+    this.owner = null;
   }
 
   _release() {

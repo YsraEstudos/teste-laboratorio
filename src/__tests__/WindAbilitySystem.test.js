@@ -203,4 +203,20 @@ describe('WindAbilitySystem', () => {
     expect(onRelease).not.toHaveBeenCalled();
     expect(system.start(createSnapshot())).toBe(false);
   });
+
+  it('releases its owner and callback when disposed without allowing a later release', () => {
+    const owner = createOwner();
+    const onRelease = vi.fn();
+    const system = new WindAbilitySystem({ owner, onRelease });
+
+    system.start(createSnapshot());
+    system.dispose();
+    system.update(1);
+
+    expect(system.owner).toBeNull();
+    expect(system.onRelease).toBeNull();
+    expect(system.start(createSnapshot())).toBe(false);
+    expect(owner.releaseWindBlast).not.toHaveBeenCalled();
+    expect(onRelease).not.toHaveBeenCalled();
+  });
 });
