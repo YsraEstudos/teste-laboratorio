@@ -89,6 +89,8 @@ export class Game {
    * Starts game
    */
   start() {
+    if (this.destroyed) return;
+
     this.isPlaying = true;
     this.wind.startAudio();
     this.hud.hideStart();
@@ -96,6 +98,8 @@ export class Game {
   }
 
   resume() {
+    if (this.destroyed) return;
+
     this.isPlaying = true;
     this.wind.resumeAudio();
     this.hud.hidePause();

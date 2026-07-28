@@ -213,6 +213,11 @@ function createEventTarget(properties = {}) {
     removeEventListener(type, listener) {
       listeners.get(type)?.delete(listener);
     },
+    dispatchEvent(event) {
+      for (const listener of listeners.get(event.type) ?? []) {
+        listener.call(this, event);
+      }
+    },
     listenerCount(type) {
       return listeners.get(type)?.size ?? 0;
     },
@@ -223,6 +228,16 @@ function createEventTarget(properties = {}) {
 }
 
 const canvas = createEventTarget();
+const hudElements = {
+  'start-screen': createEventTarget({ classList: { add: vi.fn(), remove: vi.fn() } }),
+  'pause-screen': createEventTarget({ classList: { add: vi.fn(), remove: vi.fn() } }),
+  'btn-start': createEventTarget(),
+  'btn-resume': createEventTarget(),
+  'room-name': createEventTarget({ textContent: '' }),
+  'controls-hint': createEventTarget({ classList: { add: vi.fn(), remove: vi.fn() } }),
+  'health-fill': createEventTarget({ style: {} }),
+  'health-val': createEventTarget({ textContent: '' }),
+};
 const windowTarget = createEventTarget({
   innerWidth: 1280,
   innerHeight: 720,
@@ -232,7 +247,8 @@ let domReadyHandler;
 const documentTarget = createEventTarget({
   readyState: 'loading',
   getElementById(id) {
-    return id === 'game-canvas' ? canvas : null;
+    if (id === 'game-canvas') return canvas;
+    return hudElements[id] ?? null;
   },
 });
 
@@ -254,6 +270,7 @@ const cancelAnimationFrame = vi.fn((id) => {
 });
 
 let mainModule;
+let ActualHUD;
 
 function createGame() {
   domReadyHandler();
@@ -306,6 +323,7 @@ beforeAll(async () => {
   vi.stubGlobal('cancelAnimationFrame', cancelAnimationFrame);
   vi.stubGlobal('alert', vi.fn());
   mainModule = await import('../main.js');
+  ({ HUD: ActualHUD } = await vi.importActual('../ui/HUD.js'));
 });
 
 beforeEach(() => {
@@ -321,6 +339,9 @@ beforeEach(() => {
   nextAnimationId = 1;
   windowTarget.clearListeners();
   canvas.clearListeners();
+  for (const element of Object.values(hudElements)) {
+    element.clearListeners();
+  }
 });
 
 afterEach(() => {
@@ -347,6 +368,28 @@ describe('Game lifecycle', () => {
 
     expect(cancelAnimationFrame).toHaveBeenCalledWith(pendingFrameId);
     expect(animationFrames.size).toBe(0);
+  });
+
+  it('ignores start after destroy', () => {
+    const game = createGame();
+
+    game.destroy();
+    game.start();
+
+    expect(game.isPlaying).toBe(false);
+    expect(game.wind.startAudio).not.toHaveBeenCalled();
+    expect(game.hud.hideStart).not.toHaveBeenCalled();
+  });
+
+  it('ignores resume after destroy', () => {
+    const game = createGame();
+
+    game.destroy();
+    game.resume();
+
+    expect(game.isPlaying).toBe(false);
+    expect(game.wind.resumeAudio).not.toHaveBeenCalled();
+    expect(game.hud.hidePause).not.toHaveBeenCalled();
   });
 
   it('cancels a pending wind blast and resets charging when paused', () => {
@@ -397,6 +440,55 @@ describe('Game lifecycle', () => {
 
     secondGame.destroy();
     expect(windowTarget.listenerCount('resize')).toBe(0);
+  });
+
+  it.each([
+    ['start', 'btn-start'],
+    ['resume', 'btn-resume'],
+  ])('routes %s clicks only to the recreated Game', (method, buttonId) => {
+    const calls = [];
+    const destroyedGame = {
+      destroyed: true,
+      input: {},
+      start: () => calls.push('destroyed:start'),
+      resume: () => calls.push('destroyed:resume'),
+    };
+    const liveGame = {
+      destroyed: false,
+      input: {},
+      start: () => calls.push('live:start'),
+      resume: () => calls.push('live:resume'),
+    };
+
+    const destroyedHud = new ActualHUD(destroyedGame);
+    destroyedHud.destroy?.();
+    destroyedHud.destroy?.();
+    const liveHud = new ActualHUD(liveGame);
+
+    hudElements[buttonId].dispatchEvent({ type: 'click' });
+
+    expect(calls).toEqual([`live:${method}`]);
+
+    liveHud.destroy?.();
+    liveHud.destroy?.();
+    hudElements[buttonId].dispatchEvent({ type: 'click' });
+    expect(calls).toEqual([`live:${method}`]);
+  });
+
+  it('detaches its owned InputManager callbacks idempotently', () => {
+    const game = {
+      input: {},
+      start: () => {},
+      resume: () => {},
+      pause: () => {},
+    };
+    const hud = new ActualHUD(game);
+
+    hud.destroy();
+    hud.destroy();
+
+    expect(game.input.onLockChange).toBeNull();
+    expect(game.input.onEscape).toBeNull();
   });
 
   it('destroys every owned subsystem once and in lifecycle order', () => {

@@ -22,25 +22,29 @@ export class HUD {
     this._lastEnergy = -1;
     this._lastHappiness = -1;
     this._lastRoom = '';
+    this.destroyed = false;
+
+    this._onStartClick = () => {
+      if (!this.destroyed) this.game.start();
+    };
+    this._onResumeClick = () => {
+      if (!this.destroyed) this.game.resume();
+    };
+    this._onInputLockChange = (locked) => {
+      if (!this.destroyed) this.onLockChange(locked);
+    };
+    this._onInputEscape = () => {
+      if (!this.destroyed) this.game.pause();
+    };
 
     this.initEvents();
   }
 
   initEvents() {
-    this.btnStart.addEventListener('click', () => {
-      this.game.start();
-    });
-
-    this.btnResume.addEventListener('click', () => {
-      this.game.resume();
-    });
-
-    this.game.input.onLockChange = (locked) => {
-      this.onLockChange(locked);
-    };
-    this.game.input.onEscape = () => {
-      this.game.pause();
-    };
+    this.btnStart.addEventListener('click', this._onStartClick);
+    this.btnResume.addEventListener('click', this._onResumeClick);
+    this.game.input.onLockChange = this._onInputLockChange;
+    this.game.input.onEscape = this._onInputEscape;
   }
 
   onLockChange(locked) {
@@ -95,6 +99,21 @@ export class HUD {
     } else {
       this._hintTimer = 0;
       this.controlsHint.classList.remove('hidden');
+    }
+  }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    this.btnStart?.removeEventListener('click', this._onStartClick);
+    this.btnResume?.removeEventListener('click', this._onResumeClick);
+
+    if (this.game?.input?.onLockChange === this._onInputLockChange) {
+      this.game.input.onLockChange = null;
+    }
+    if (this.game?.input?.onEscape === this._onInputEscape) {
+      this.game.input.onEscape = null;
     }
   }
 }
