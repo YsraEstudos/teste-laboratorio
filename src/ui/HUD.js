@@ -16,12 +16,17 @@ export class HUD {
     this.controlsHint = document.getElementById('controls-hint');
     this.healthFill = document.getElementById('health-fill');
     this.healthVal = document.getElementById('health-val');
+    this.windEnergy = document.getElementById('wind-energy');
+    this.windCooldown = document.getElementById('wind-cooldown');
 
     this._hintTimer = 0;
     this._lastHealth = -1;
     this._lastEnergy = -1;
     this._lastHappiness = -1;
     this._lastRoom = '';
+    this._lastWindEnergyText = '';
+    this._lastWindCooldownText = '';
+    this._lastWindCooldownVisible = null;
     this.destroyed = false;
 
     this._onStartClick = () => {
@@ -91,6 +96,8 @@ export class HUD {
       this._lastHealth = health;
     }
 
+    this._updateWindAbility?.();
+
     if (this.game.isPlaying) {
       this._hintTimer += delta;
       if (this._hintTimer > 6) {
@@ -99,6 +106,32 @@ export class HUD {
     } else {
       this._hintTimer = 0;
       this.controlsHint.classList.remove('hidden');
+    }
+  }
+
+  _updateWindAbility() {
+    const state = this.game.windAbility?.getState?.();
+    if (!state) return;
+
+    const energy = Math.round(state.energy);
+    const energyText =
+      state.state === 'ready' && !state.canRelease
+        ? `ENERGIA DO VENTO: ${energy}% — ENERGIA INSUFICIENTE`
+        : `ENERGIA DO VENTO: ${energy}%`;
+    if (this.windEnergy && this._lastWindEnergyText !== energyText) {
+      this.windEnergy.textContent = energyText;
+      this._lastWindEnergyText = energyText;
+    }
+
+    const cooldownVisible = state.state === 'cooldown';
+    const cooldownText = cooldownVisible ? `RECARGANDO: ${state.remaining.toFixed(1)}s` : '';
+    if (this.windCooldown && this._lastWindCooldownText !== cooldownText) {
+      this.windCooldown.textContent = cooldownText;
+      this._lastWindCooldownText = cooldownText;
+    }
+    if (this.windCooldown && this._lastWindCooldownVisible !== cooldownVisible) {
+      this.windCooldown.hidden = !cooldownVisible;
+      this._lastWindCooldownVisible = cooldownVisible;
     }
   }
 

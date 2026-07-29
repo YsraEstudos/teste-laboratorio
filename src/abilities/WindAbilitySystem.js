@@ -1,5 +1,14 @@
 import { WindAbilityConfig } from './WindAbilityConfig.js';
 
+function normalizeConfig(config) {
+  const merged = { ...WindAbilityConfig, ...config };
+  return Object.freeze({
+    ...merged,
+    chargeDuration: config.chargeDuration ?? config.chargeSeconds ?? WindAbilityConfig.chargeDuration,
+    cooldownDuration: config.cooldownDuration ?? config.cooldownSeconds ?? WindAbilityConfig.cooldownDuration,
+  });
+}
+
 function freezeSnapshot(snapshot) {
   return Object.freeze({
     targetObject: snapshot.targetObject,
@@ -14,7 +23,7 @@ function freezeSnapshot(snapshot) {
 export class WindAbilitySystem {
   constructor({ owner, config = WindAbilityConfig, onRelease = () => {} }) {
     this.owner = owner;
-    this.config = Object.freeze({ ...WindAbilityConfig, ...config });
+    this.config = normalizeConfig(config);
     this.onRelease = onRelease;
     this.state = 'ready';
     this.elapsed = 0;
@@ -24,7 +33,8 @@ export class WindAbilitySystem {
   }
 
   start(snapshot) {
-    if (this.disposed || this.paused || this.state !== 'ready' || this.owner.energy < this.config.energyCost) {
+    const requiredEnergy = this.config.minimumEnergy + this.config.energyCost;
+    if (this.disposed || this.paused || this.state !== 'ready' || this.owner.energy < requiredEnergy) {
       return false;
     }
 
@@ -38,14 +48,15 @@ export class WindAbilitySystem {
   update(delta) {
     if (this.disposed || this.paused || !Number.isFinite(delta) || delta <= 0) return;
 
+    if (this.state === 'ready' || this.state === 'cooldown') this._recoverEnergy(delta);
     this.elapsed += delta;
 
-    if (this.state === 'charging' && this.elapsed >= this.config.chargeSeconds) {
+    if (this.state === 'charging' && this.elapsed >= this.config.chargeDuration) {
       this._release();
       return;
     }
 
-    if (this.state === 'cooldown' && this.elapsed >= this.config.cooldownSeconds) {
+    if (this.state === 'cooldown' && this.elapsed >= this.config.cooldownDuration) {
       this.elapsed = 0;
       this.state = 'ready';
     }
@@ -68,6 +79,21 @@ export class WindAbilitySystem {
     this.paused = false;
   }
 
+  getState() {
+    const isCoolingDown = this.state === 'cooldown';
+    return Object.freeze({
+      state: this.state,
+      elapsed: this.elapsed,
+      remaining: isCoolingDown ? Math.max(0, this.config.cooldownDuration - this.elapsed) : 0,
+      energy: this.owner?.energy ?? 0,
+      canRelease:
+        !this.disposed &&
+        !this.paused &&
+        this.state === 'ready' &&
+        (this.owner?.energy ?? 0) >= this.config.minimumEnergy + this.config.energyCost,
+    });
+  }
+
   dispose() {
     if (this.disposed) return;
 
@@ -87,10 +113,14 @@ export class WindAbilitySystem {
 
     this.owner.stopCharging();
     this.owner.releaseWindBlast();
-    this.owner.energy = Math.max(0, this.owner.energy - this.config.energyCost);
+    this.owner.energy = Math.max(this.config.minimumEnergy, this.owner.energy - this.config.energyCost);
     this.snapshot = null;
     this.elapsed = 0;
     this.state = 'cooldown';
     this.onRelease(snapshot);
+  }
+
+  _recoverEnergy(delta) {
+    this.owner.energy = Math.min(100, this.owner.energy + this.config.energyRecoveryRate * delta);
   }
 }

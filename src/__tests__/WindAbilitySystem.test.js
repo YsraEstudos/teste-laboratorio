@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import { WindConfig } from '../config/WindConfig.js';
 import { WindAbilityConfig } from '../abilities/WindAbilityConfig.js';
 import { WindAbilitySystem } from '../abilities/WindAbilitySystem.js';
 
@@ -49,7 +50,7 @@ describe('WindAbilitySystem', () => {
 
     expect(system.state).toBe('ready');
     expect(owner.startCharging).not.toHaveBeenCalled();
-    expect(owner.energy).toBe(9);
+    expect(owner.energy).toBe(17);
     expect(onRelease).not.toHaveBeenCalled();
   });
 
@@ -218,5 +219,80 @@ describe('WindAbilitySystem', () => {
     expect(system.start(createSnapshot())).toBe(false);
     expect(owner.releaseWindBlast).not.toHaveBeenCalled();
     expect(onRelease).not.toHaveBeenCalled();
+  });
+
+  it('uses the centralized duration names while preserving legacy timing overrides', () => {
+    const owner = createOwner(20);
+    const system = new WindAbilitySystem({
+      owner,
+      config: { chargeDuration: 0.2, cooldownDuration: 0.3, energyCost: 5 },
+    });
+
+    expect(system.start(createSnapshot())).toBe(true);
+    system.update(0.2);
+    expect(system.state).toBe('cooldown');
+    expect(owner.energy).toBe(15);
+
+    system.update(0.3);
+    expect(system.state).toBe('ready');
+  });
+
+  it.each([1 / 30, 1 / 60, 1 / 120])('recovers energy deterministically at %s second frames', (delta) => {
+    const owner = createOwner(50);
+    const system = new WindAbilitySystem({ owner, config: { energyRecoveryRate: 12 } });
+    const frames = Math.round(1 / delta);
+
+    for (let frame = 0; frame < frames; frame += 1) system.update(delta);
+
+    expect(owner.energy).toBeCloseTo(62, 8);
+  });
+
+  it('recovers only while ready or cooling down and never above full energy', () => {
+    const owner = createOwner(95);
+    const system = new WindAbilitySystem({ owner, config: { energyRecoveryRate: 20 } });
+
+    system.update(1);
+    expect(owner.energy).toBe(100);
+
+    system.start(createSnapshot());
+    system.update(0.1);
+    expect(owner.energy).toBe(100);
+
+    system.pause();
+    system.update(1);
+    expect(owner.energy).toBe(100);
+  });
+
+  it('requires the configured minimum energy before charging', () => {
+    const owner = createOwner(14);
+    const system = new WindAbilitySystem({
+      owner,
+      config: { energyCost: 5, minimumEnergy: 15 },
+    });
+
+    expect(system.start(createSnapshot())).toBe(false);
+    expect(owner.startCharging).not.toHaveBeenCalled();
+  });
+
+  it('reports an immutable UI state with cooldown remaining and release availability', () => {
+    const owner = createOwner(90);
+    const system = new WindAbilitySystem({ owner, config: { chargeDuration: 0.2, cooldownDuration: 0.5 } });
+
+    expect(system.getState()).toEqual({
+      state: 'ready',
+      elapsed: 0,
+      remaining: 0,
+      energy: 90,
+      canRelease: true,
+    });
+
+    system.start(createSnapshot());
+    system.update(0.2);
+    system.update(0.1);
+    const state = system.getState();
+
+    expect(state).toMatchObject({ state: 'cooldown', elapsed: 0.1, remaining: 0.4, energy: 80.8, canRelease: false });
+    expect(Object.isFrozen(state)).toBe(true);
+    expect(WindConfig.minimumEnergy).toBeGreaterThan(0);
   });
 });

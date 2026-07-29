@@ -16,12 +16,13 @@ function createClassList() {
   };
 }
 
-function createElement({ classList = createClassList(), textContent = '', style = {} } = {}) {
+function createElement({ classList = createClassList(), textContent = '', style = {}, hidden = false } = {}) {
   const listeners = new Map();
   return {
     classList,
     textContent,
     style,
+    hidden,
     addEventListener(type, listener) {
       listeners.set(type, listener);
     },
@@ -58,6 +59,8 @@ function installDocument() {
     'controls-hint': createElement(),
     'health-fill': createElement(),
     'health-val': createElement(),
+    'wind-energy': createElement(),
+    'wind-cooldown': createElement({ hidden: true }),
   };
 
   vi.stubGlobal('document', {
@@ -100,5 +103,26 @@ describe('HUD timing', () => {
     expect(sixtyFpsHud._hintTimer).toBeCloseTo(6.1);
     expect(thirtyFpsElements['controls-hint'].classList.contains('hidden')).toBe(true);
     expect(sixtyFpsElements['controls-hint'].classList.contains('hidden')).toBe(true);
+  });
+
+  it('renders accessible wind energy feedback and only shows cooldown while active', () => {
+    const elements = installDocument();
+    const game = createGame();
+    game.windAbility = {
+      getState: vi.fn(() => ({ state: 'ready', energy: 15, canRelease: false, remaining: 0 })),
+    };
+    const hud = new HUD(game);
+
+    hud.update();
+
+    expect(elements['wind-energy'].textContent).toBe('ENERGIA DO VENTO: 15% — ENERGIA INSUFICIENTE');
+    expect(elements['wind-cooldown'].hidden).toBe(true);
+
+    game.windAbility.getState.mockReturnValue({ state: 'cooldown', energy: 32, canRelease: false, remaining: 0.42 });
+    hud.update();
+
+    expect(elements['wind-energy'].textContent).toBe('ENERGIA DO VENTO: 32%');
+    expect(elements['wind-cooldown'].textContent).toBe('RECARGANDO: 0.4s');
+    expect(elements['wind-cooldown'].hidden).toBe(false);
   });
 });

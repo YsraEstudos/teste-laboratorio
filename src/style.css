@@ -170,6 +170,18 @@ body {
   min-width: 30px;
 }
 
+#wind-energy,
+#wind-cooldown {
+  color: #49d7e8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+#wind-cooldown {
+  color: #ffd36d;
+}
+
 .overlay {
   position: fixed;
   inset: 0;

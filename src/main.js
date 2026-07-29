@@ -5,6 +5,7 @@ import { PlayerController } from './entities/PlayerController.js';
 import { WindChild } from './entities/WindChild.js';
 import { WindParticleSystem } from './effects/WindParticleSystem.js';
 import { WindAbilitySystem } from './abilities/WindAbilitySystem.js';
+import { WindConfig } from './config/WindConfig.js';
 import { createWindImpulse } from './wind/WindImpulse.js';
 import { WindSystem } from './wind/WindSystem.js';
 import { RadialMenu } from './ui/RadialMenu.js';
@@ -16,7 +17,7 @@ import { NavigationGrid } from './world/NavigationGrid.js';
 
 export class Game {
   static CONSTANTS = {
-    WIND_BLAST_RANGE_SQ: 18.0 ** 2,
+    WIND_BLAST_RANGE_SQ: WindConfig.blastRange ** 2,
   };
   constructor() {
     this.clock = new THREE.Clock();
