@@ -45,19 +45,27 @@ export class DoorSystem {
     door.rightPanel?.updateWorldMatrix?.(true, false);
     door.leftCollider?.setFromObject?.(door.leftPanel);
     door.rightCollider?.setFromObject?.(door.rightPanel);
+    if (door.leftCollider) door.leftCollider.userData = { navigationPassable: true };
+    if (door.rightCollider) door.rightCollider.userData = { navigationPassable: true };
   }
 
   /**
    * @param {number} delta
    * @param {{x: number, z: number}|null} playerPos
+   * @param {{x: number, z: number}[]} [additionalPositions]
    */
-  update(delta, playerPos) {
-    if (this.disposed || !playerPos) return;
+  update(delta, playerPos, additionalPositions = []) {
+    if (this.disposed || (!playerPos && additionalPositions.length === 0)) return;
+    const positions = [playerPos, ...additionalPositions].filter(Boolean);
 
     for (const door of this.doors) {
-      const dx = playerPos.x - door.x;
-      const dz = playerPos.z - door.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
+      const dist = Math.min(
+        ...positions.map((position) => {
+          const dx = position.x - door.x;
+          const dz = position.z - door.z;
+          return Math.sqrt(dx * dx + dz * dz);
+        }),
+      );
       door.isOpen = dist < 3.4;
 
       const targetOpen = door.isOpen ? 1 : 0;

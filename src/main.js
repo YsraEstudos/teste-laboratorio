@@ -217,7 +217,7 @@ export class Game {
       this.windAbility.update(delta);
       this.windChild.update(delta, this.lab.navigationColliders, this.lab.dynamicColliders);
       this.windFX.update(delta);
-      this.lab.update(delta, this.player.position, this.wind);
+      this.lab.update(delta, this.player.position, [this.windChild.position], this.wind);
       this.hud.update(delta);
       this.profiler.endCPU();
     }

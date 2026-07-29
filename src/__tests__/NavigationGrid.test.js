@@ -84,6 +84,18 @@ describe('NavigationGrid structured path result', () => {
 });
 
 describe('NavigationGrid dynamic obstacles', () => {
+  it('treats door panels marked as navigation-passable as traversable portals', () => {
+    const door = new THREE.Box3(new THREE.Vector3(2, 0, 1), new THREE.Vector3(3, 2, 2));
+    door.userData = { navigationPassable: true };
+
+    const result = createGrid().findPath(0.5, 1.5, 4.5, 1.5, {
+      dynamicColliders: [door],
+    });
+
+    expect(result.status).toBe('complete');
+    expect(result.waypoints.at(-1)).toEqual(new THREE.Vector3(4.5, 0, 1.5));
+  });
+
   it('routes around a dynamic door without crossing its collider', () => {
     const grid = createGrid();
     const closedDoor = new THREE.Box3(new THREE.Vector3(2, 0, 1), new THREE.Vector3(3, 2, 2));

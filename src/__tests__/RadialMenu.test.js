@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RadialMenu } from '../ui/RadialMenu.js';
+import { getRoomById } from '../world/RoomData.js';
 
 function createClassList(initial = '') {
   const classes = new Set(initial.split(/\s+/).filter(Boolean));
@@ -214,6 +215,15 @@ afterEach(() => {
 });
 
 describe('RadialMenu keyboard and accessibility contract', () => {
+  it('uses the official RoomData navigation target for the test room', () => {
+    const menu = new RadialMenu(game);
+
+    menu._moveToTestingRoom();
+
+    const target = getRoomById('testing_room').navigation;
+    expect(game.windChild.moveTo).toHaveBeenCalledWith(target.x, target.z);
+  });
+
   it('exposes a labelled menu whose SVG sectors use roving menuitem focus', () => {
     const menu = new RadialMenu(game);
 

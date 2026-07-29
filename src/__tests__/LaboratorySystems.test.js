@@ -95,6 +95,27 @@ describe('DoorSystem', () => {
     expect(colliders[0].min.x).toBeLessThan(initialLeftMinX);
     expect(colliders[1].max.x).toBeGreaterThan(1);
   });
+
+  it('opens a door when a Wind Child position approaches it', () => {
+    const door = {
+      x: 0,
+      z: -2,
+      width: 4,
+      leftPanel: new THREE.Object3D(),
+      rightPanel: new THREE.Object3D(),
+      indicatorMat: { color: { setHex: vi.fn() }, emissive: { setHex: vi.fn() } },
+      baseLeftX: -1,
+      baseRightX: 1,
+      openAmount: 0,
+      isOpen: false,
+    };
+    const system = new DoorSystem([door]);
+
+    system.update(0.2, new THREE.Vector3(0, 0, 6), [new THREE.Vector3(0, 0, -2)]);
+
+    expect(door.isOpen).toBe(true);
+    expect(door.openAmount).toBeGreaterThan(0);
+  });
 });
 
 describe('TestObjectSystem', () => {

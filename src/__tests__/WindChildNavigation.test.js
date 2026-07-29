@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { WindChild } from '../entities/WindChild.js';
+import { getRoomById } from '../world/RoomData.js';
+import { NavigationGrid } from '../world/NavigationGrid.js';
 
 function pathResult(overrides = {}) {
   return {
@@ -46,6 +48,29 @@ function createNavigationHarness(position = new THREE.Vector3()) {
 }
 
 describe('WindChild navigation contract', () => {
+  it('builds and advances a route to the official test-room target', () => {
+    const child = createNavigationHarness(new THREE.Vector3(3.2, 0, 4.5));
+    const navigation = new NavigationGrid([], {
+      minX: -5,
+      maxX: 5,
+      minZ: -60,
+      maxZ: 8,
+      cellSize: 0.5,
+    });
+    const target = getRoomById('testing_room').navigation;
+    child.setNavigation(navigation);
+
+    child.moveTo(target.x, target.z);
+    expect(child.navigationState).toBe('moving');
+    expect(child.path.length).toBeGreaterThan(0);
+
+    const before = child.position.clone();
+    child.update(0.5, []);
+
+    expect(child.position.distanceTo(before)).toBeGreaterThan(0);
+    expect(child.position.z).toBeLessThan(before.z);
+  });
+
   it('executes waypoints only when the path result is complete', () => {
     const child = createNavigationHarness();
     const result = pathResult();

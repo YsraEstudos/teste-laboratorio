@@ -1,3 +1,5 @@
+import { getRoomById } from '../world/RoomData.js';
+
 /**
  * RadialMenu controls the 360-degree context menu for the Wind Child.
  * It uses a custom SVG-based sector system and manages pointer/keyboard events.
@@ -407,9 +409,8 @@ export class RadialMenu {
 
   _moveToTestingRoom() {
     const child = this.game.windChild;
-    if (child) {
-      child.moveTo(0, -54);
-    }
+    const target = getRoomById('testing_room')?.navigation;
+    if (child && target) child.moveTo(target.x, target.z);
   }
 
   _callToPlayer() {

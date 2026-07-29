@@ -1157,7 +1157,7 @@ export class LaboratoryBuilder {
     }
   }
 
-  update(delta, playerPos = null, windSystem = null) {
+  update(delta, playerPos = null, additionalPositions = [], windSystem = null) {
     this.time += delta;
     for (const mesh of this.waterMeshes) {
       if (mesh.material.map) {
@@ -1167,7 +1167,7 @@ export class LaboratoryBuilder {
     }
 
     if (playerPos) {
-      this.doorSystem.update(delta, playerPos);
+      this.doorSystem.update(delta, playerPos, additionalPositions);
       this.testObjectSystem.update(delta, windSystem);
     }
   }

@@ -117,6 +117,7 @@ export class NavigationGrid {
     const padding = 0.38;
 
     for (const collider of colliders) {
+      if (collider?.userData?.navigationPassable === true) continue;
       const bounds = this._colliderCellBounds(collider, 1);
       for (let z = bounds.minZ; z <= bounds.maxZ; z += 1) {
         for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
