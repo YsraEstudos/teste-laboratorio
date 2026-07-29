@@ -255,6 +255,7 @@ export class WindParticleSystem {
       smoke.startScale = 0.5 + Math.random() * 0.4;
       smoke.endScale = 2.5 + powerLevel * 0.35;
       smoke.rotSpeed = (Math.random() - 0.5) * 3.5;
+      smoke.directional = false;
 
       const progress = Math.random();
       const posOnLine = new THREE.Vector3().copy(origin).lerp(target, progress);
@@ -295,6 +296,7 @@ export class WindParticleSystem {
       dust.maxLife = 1.0 + Math.random() * 0.6;
       dust.startScale = 0.4;
       dust.endScale = 2.5 + powerLevel * 0.3;
+      dust.directional = false;
 
       const atTarget = d % 2 === 0;
       const basePos = atTarget ? target.clone() : origin.clone();
