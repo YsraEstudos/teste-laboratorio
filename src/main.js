@@ -49,7 +49,7 @@ export class Game {
 
     // Wind Child (Subject with Wind Powers) - Spawns in Entrance room near Player
     this.windChild = new WindChild(this.renderer.scene);
-    this.windChild.setNavigation(this.navigation);
+    this.windChild.setNavigation(this.navigation, this.lab.dynamicColliders);
     this.windChild.position.set(3.2, 0, 4.5);
     if (this.windChild.model) this.windChild.model.position.copy(this.windChild.position);
     this.windAbility = new WindAbilitySystem({
@@ -215,7 +215,7 @@ export class Game {
       this.player.setWindForce(this._windForce);
       this.player.update(delta, this.lab.colliders, this.lab.doors);
       this.windAbility.update(delta);
-      this.windChild.update(delta, this.lab.navigationColliders);
+      this.windChild.update(delta, this.lab.navigationColliders, this.lab.dynamicColliders);
       this.windFX.update(delta);
       this.lab.update(delta, this.player.position, this.wind);
       this.hud.update(delta);

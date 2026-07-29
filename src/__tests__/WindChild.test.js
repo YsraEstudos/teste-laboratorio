@@ -35,14 +35,25 @@ function createGrid() {
 }
 
 describe('WindChild dynamic navigation lifecycle', () => {
+  it('uses the current door colliders when planning the initial route', () => {
+    const child = createChild();
+    const closedDoor = new THREE.Box3(new THREE.Vector3(2, 0, 1), new THREE.Vector3(3, 2, 2));
+    child.setNavigation(createGrid(), [closedDoor]);
+
+    child.moveTo(4.5, 1.5);
+
+    expect(child.path.some((waypoint) => waypoint.z !== 1.5)).toBe(true);
+    expect(child.navigationState).toBe('moving');
+  });
+
   it('replans around the current collider when a door closes over the active segment', () => {
     const child = createChild();
     const closedDoor = new THREE.Box3(new THREE.Vector3(1, 0, 1), new THREE.Vector3(2, 2, 2));
     child.setNavigation(createGrid());
     child.moveTo(4.5, 1.5);
 
-    WindChild.prototype._updateNavigation.call(child, 0.25, [closedDoor]);
-    WindChild.prototype._updateNavigation.call(child, 0.25, [closedDoor]);
+    WindChild.prototype._updateNavigation.call(child, 0.25, [closedDoor], [closedDoor]);
+    WindChild.prototype._updateNavigation.call(child, 0.25, [closedDoor], [closedDoor]);
 
     expect(child.path.some((waypoint) => waypoint.z !== 1.5)).toBe(true);
     expect(child.navigationState).toBe('moving');
@@ -56,12 +67,39 @@ describe('WindChild dynamic navigation lifecycle', () => {
     child.setNavigation(createGrid());
     child.moveTo(4.5, 1.5);
 
-    WindChild.prototype._updateNavigation.call(child, 0.5, [closedDoor]);
+    WindChild.prototype._updateNavigation.call(child, 0.5, [closedDoor], [closedDoor]);
 
     expect(child.path).toEqual([]);
     expect(child.pathIndex).toBe(0);
     expect(child.navigationDestination).toBeNull();
     expect(child.navigationState).toBe('cancelled');
     expect(child.navigationReason).toBe('target-unreachable');
+  });
+
+  it('passes only dynamic colliders to replanning while retaining static colliders for movement', () => {
+    const child = createChild();
+    const staticCollider = new THREE.Box3(new THREE.Vector3(4.8, 0, 0), new THREE.Vector3(5, 2, 3));
+    const closedDoor = new THREE.Box3(new THREE.Vector3(1, 0, 1), new THREE.Vector3(2, 2, 2));
+    const optionsSeen = [];
+    const navigation = {
+      findPath(startX, startZ, targetX, targetZ, options) {
+        optionsSeen.push(options);
+        return {
+          status: 'complete',
+          reason: null,
+          waypoints: [new THREE.Vector3(targetX, 0, targetZ)],
+          requestedTarget: new THREE.Vector3(targetX, 0, targetZ),
+          resolvedTarget: new THREE.Vector3(targetX, 0, targetZ),
+          adjustedStart: false,
+          adjustedTarget: false,
+        };
+      },
+    };
+    child.setNavigation(navigation, [closedDoor]);
+    child.moveTo(4.5, 1.5);
+
+    WindChild.prototype._updateNavigation.call(child, 0.5, [staticCollider, closedDoor], [closedDoor]);
+
+    expect(optionsSeen.at(-1)).toEqual({ dynamicColliders: [closedDoor] });
   });
 });

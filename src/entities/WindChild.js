@@ -51,6 +51,7 @@ export class WindChild {
     this.path = [];
     this.pathIndex = 0;
     this.navigation = null;
+    this.navigationDynamicColliders = [];
     this.navigationDestination = null;
     this.walkSpeed = 4.2;
     this.navigationRadius = 0.38;
@@ -81,8 +82,13 @@ export class WindChild {
     }
   }
 
-  setNavigation(navigation) {
+  /**
+   * @param {import('../world/NavigationGrid.js').NavigationGrid} navigation
+   * @param {THREE.Box3[]} [dynamicColliders]
+   */
+  setNavigation(navigation, dynamicColliders = []) {
     this.navigation = navigation;
+    this.navigationDynamicColliders = dynamicColliders;
   }
 
   moveTo(x, z) {
@@ -97,7 +103,9 @@ export class WindChild {
       return;
     }
 
-    const result = this.navigation.findPath(this.position.x, this.position.z, x, z);
+    const result = this.navigation.findPath(this.position.x, this.position.z, x, z, {
+      dynamicColliders: this.navigationDynamicColliders ?? [],
+    });
     if (result.status !== 'complete' || result.waypoints.length === 0) {
       this.navigationState = 'cancelled';
       this.navigationReason = result.reason || 'invalid-path';
@@ -576,10 +584,10 @@ export class WindChild {
   // ==========================================
   // PROCEDURAL ANIMATION UPDATE LOOP
   // ==========================================
-  update(delta, colliders = []) {
+  update(delta, colliders = [], dynamicColliders = this.navigationDynamicColliders ?? []) {
     this.time += delta;
 
-    this._updateNavigation(delta, colliders);
+    this._updateNavigation(delta, colliders, dynamicColliders);
 
     this.model.position.copy(this.position);
 
@@ -617,9 +625,10 @@ export class WindChild {
     this._navigationAABB ??= new THREE.Box3();
   }
 
-  _updateNavigation(delta, colliders) {
+  _updateNavigation(delta, colliders, dynamicColliders = this.navigationDynamicColliders ?? []) {
     if (!this.path || this.pathIndex >= this.path.length || delta <= 0) return;
     this._ensureNavigationScratch();
+    this.navigationDynamicColliders = dynamicColliders;
 
     let movementBudget = this.walkSpeed * delta;
     let requestedMovement = false;
@@ -677,7 +686,7 @@ export class WindChild {
     if (requestedMovement && !madeProgress) {
       this.navigationBlockedTime = Math.min(this.navigationBlockTimeout, this.navigationBlockedTime + delta);
       if (this.navigationBlockedTime >= this.navigationBlockTimeout) {
-        this._replanNavigation(colliders);
+        this._replanNavigation(dynamicColliders);
       }
     } else if (madeProgress) {
       this.navigationBlockedTime = 0;

@@ -118,6 +118,18 @@ describe('NavigationGrid dynamic obstacles', () => {
     expect(result.reason).toBe('target-unreachable');
   });
 
+  it('does not cross a thin collider located between adjacent cell centers', () => {
+    const grid = createGrid([], { maxX: 2, maxZ: 1 });
+    const thinWall = new THREE.Box3(new THREE.Vector3(0.99, 0, 0), new THREE.Vector3(1.01, 2, 1));
+
+    const result = grid.findPath(0.5, 0.5, 1.5, 0.5, {
+      dynamicColliders: [thinWall],
+    });
+
+    expect(result.status).not.toBe('complete');
+    expect(result.reason).toBe('target-unreachable');
+  });
+
   it('smooths clear waypoints but keeps the turn that avoids a collider', () => {
     const grid = createGrid();
     const blocker = new THREE.Box3(new THREE.Vector3(2.2, 0, 1.2), new THREE.Vector3(2.8, 2, 1.8));
