@@ -51,6 +51,7 @@ export class WindChild {
     this.path = [];
     this.pathIndex = 0;
     this.navigation = null;
+    this.navigationDestination = null;
     this.walkSpeed = 4.2;
     this.navigationRadius = 0.38;
     this.navigationState = 'idle';
@@ -88,6 +89,7 @@ export class WindChild {
     this.path.length = 0;
     this.pathIndex = 0;
     this.navigationBlockedTime = 0;
+    this.navigationDestination = null;
 
     if (!this.navigation) {
       this.navigationState = 'cancelled';
@@ -103,6 +105,7 @@ export class WindChild {
     }
 
     this.path = result.waypoints.map((waypoint) => waypoint.clone());
+    this.navigationDestination = new THREE.Vector3(x, 0, z);
     this.navigationState = 'moving';
     this.navigationReason = null;
   }
@@ -665,6 +668,7 @@ export class WindChild {
       this.path.length = 0;
       this.pathIndex = 0;
       this.navigationBlockedTime = 0;
+      this.navigationDestination = null;
       this.navigationState = 'complete';
       this.navigationReason = 'arrived';
       return;
@@ -673,14 +677,44 @@ export class WindChild {
     if (requestedMovement && !madeProgress) {
       this.navigationBlockedTime = Math.min(this.navigationBlockTimeout, this.navigationBlockedTime + delta);
       if (this.navigationBlockedTime >= this.navigationBlockTimeout) {
-        this.path.length = 0;
-        this.pathIndex = 0;
-        this.navigationState = 'cancelled';
-        this.navigationReason = 'blocked';
+        this._replanNavigation(colliders);
       }
     } else if (madeProgress) {
       this.navigationBlockedTime = 0;
     }
+  }
+
+  /**
+   * @param {THREE.Box3[]} dynamicColliders
+   */
+  _replanNavigation(dynamicColliders) {
+    const destination = this.navigationDestination;
+    if (!this.navigation || !destination) {
+      this.path.length = 0;
+      this.pathIndex = 0;
+      this.navigationDestination = null;
+      this.navigationState = 'cancelled';
+      this.navigationReason = 'blocked';
+      return;
+    }
+
+    const result = this.navigation.findPath(this.position.x, this.position.z, destination.x, destination.z, {
+      dynamicColliders,
+    });
+    if (result.status !== 'complete' || result.waypoints.length === 0) {
+      this.path.length = 0;
+      this.pathIndex = 0;
+      this.navigationDestination = null;
+      this.navigationState = 'cancelled';
+      this.navigationReason = result.reason || 'blocked';
+      return;
+    }
+
+    this.path = result.waypoints.map((waypoint) => waypoint.clone());
+    this.pathIndex = 0;
+    this.navigationBlockedTime = 0;
+    this.navigationState = 'moving';
+    this.navigationReason = null;
   }
 
   _moveWithCollisions(deltaX, deltaZ, colliders) {

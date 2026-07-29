@@ -9,7 +9,14 @@ export class NavigationGrid {
     this.cellSize = options.cellSize ?? 0.5;
     this.cols = Math.ceil((this.maxX - this.minX) / this.cellSize);
     this.rows = Math.ceil((this.maxZ - this.minZ) / this.cellSize);
-    this.blocked = new Uint8Array(this.cols * this.rows);
+    const total = this.cols * this.rows;
+    this.blocked = new Uint8Array(total);
+    this._dynamicBlocked = new Uint8Array(total);
+    this._costs = new Float32Array(total);
+    this._previous = new Int32Array(total);
+    this._closed = new Uint8Array(total);
+    this._heap = [];
+    this._staticColliders = colliders.filter((collider) => this._isRelevantCollider(collider));
     this._build(colliders);
   }
 
@@ -19,6 +26,10 @@ export class NavigationGrid {
 
   _inside(x, z) {
     return x >= 0 && x < this.cols && z >= 0 && z < this.rows;
+  }
+
+  _isRelevantCollider(collider) {
+    return Boolean(collider?.min && collider?.max && collider.max.y > 0.02 && collider.min.y <= 2.1);
   }
 
   _build(colliders) {
@@ -43,6 +54,34 @@ export class NavigationGrid {
     }
   }
 
+  _indexDynamicColliders(colliders) {
+    this._dynamicBlocked.fill(0);
+    const padding = 0.38;
+
+    for (const collider of colliders) {
+      if (!this._isRelevantCollider(collider)) continue;
+      const minCell = this.worldToCell(collider.min.x - padding, collider.min.z - padding);
+      const maxCell = this.worldToCell(collider.max.x + padding, collider.max.z + padding);
+
+      for (let z = minCell.z; z <= maxCell.z; z += 1) {
+        for (let x = minCell.x; x <= maxCell.x; x += 1) {
+          const worldX = this.minX + (x + 0.5) * this.cellSize;
+          const worldZ = this.minZ + (z + 0.5) * this.cellSize;
+          if (
+            worldX >= collider.min.x - padding &&
+            worldX <= collider.max.x + padding &&
+            worldZ >= collider.min.z - padding &&
+            worldZ <= collider.max.z + padding
+          ) {
+            this._dynamicBlocked[this._index(x, z)] = 1;
+          }
+        }
+      }
+    }
+
+    return this._dynamicBlocked;
+  }
+
   worldToCell(x, z) {
     return {
       x: THREE.MathUtils.clamp(Math.floor((x - this.minX) / this.cellSize), 0, this.cols - 1),
@@ -54,19 +93,21 @@ export class NavigationGrid {
     return new THREE.Vector3(this.minX + (x + 0.5) * this.cellSize, 0, this.minZ + (z + 0.5) * this.cellSize);
   }
 
-  isWalkable(x, z) {
-    return this._inside(x, z) && this.blocked[this._index(x, z)] === 0;
+  isWalkable(x, z, dynamicBlocked = null) {
+    if (!this._inside(x, z)) return false;
+    const index = this._index(x, z);
+    return this.blocked[index] === 0 && (!dynamicBlocked || dynamicBlocked[index] === 0);
   }
 
-  _nearestWalkable(cell) {
-    if (this.isWalkable(cell.x, cell.z)) return cell;
+  _nearestWalkable(cell, dynamicBlocked = null) {
+    if (this.isWalkable(cell.x, cell.z, dynamicBlocked)) return cell;
     let bestCell = null;
     let minCost = Infinity;
     for (let radius = 1; radius < 12; radius += 1) {
       for (let z = cell.z - radius; z <= cell.z + radius; z += 1) {
         for (let x = cell.x - radius; x <= cell.x + radius; x += 1) {
           if (Math.abs(x - cell.x) !== radius && Math.abs(z - cell.z) !== radius) continue;
-          if (this.isWalkable(x, z)) {
+          if (this.isWalkable(x, z, dynamicBlocked)) {
             const dist = (x - cell.x) * (x - cell.x) + (z - cell.z) * (z - cell.z);
             if (dist < minCost) {
               minCost = dist;
@@ -142,7 +183,72 @@ export class NavigationGrid {
     };
   }
 
-  findPath(startX, startZ, targetX, targetZ) {
+  _segmentIntersectsCollider(start, end, collider) {
+    if (!this._isRelevantCollider(collider)) return false;
+    const padding = 0.38;
+    const minX = collider.min.x - padding;
+    const maxX = collider.max.x + padding;
+    const minZ = collider.min.z - padding;
+    const maxZ = collider.max.z + padding;
+    const deltaX = end.x - start.x;
+    const deltaZ = end.z - start.z;
+    let near = 0;
+    let far = 1;
+
+    for (const [origin, delta, min, max] of [
+      [start.x, deltaX, minX, maxX],
+      [start.z, deltaZ, minZ, maxZ],
+    ]) {
+      if (Math.abs(delta) <= 0.000001) {
+        if (origin < min || origin > max) return false;
+        continue;
+      }
+      const first = (min - origin) / delta;
+      const second = (max - origin) / delta;
+      near = Math.max(near, Math.min(first, second));
+      far = Math.min(far, Math.max(first, second));
+      if (near > far) return false;
+    }
+
+    return true;
+  }
+
+  _segmentIsClear(start, end, colliders) {
+    return !colliders.some((collider) => this._segmentIntersectsCollider(start, end, collider));
+  }
+
+  /**
+   * Removes redundant waypoints only when the replacement segment is clear
+   * for the Wind Child navigation radius.
+   *
+   * @param {THREE.Vector3[]} waypoints
+   * @param {THREE.Box3[]} colliders
+   * @returns {THREE.Vector3[]}
+   */
+  smoothPath(waypoints, colliders = []) {
+    if (waypoints.length <= 2) return waypoints.map((waypoint) => waypoint.clone());
+
+    const smoothed = [waypoints[0].clone()];
+    let anchor = 0;
+    while (anchor < waypoints.length - 1) {
+      let next = waypoints.length - 1;
+      while (next > anchor + 1 && !this._segmentIsClear(waypoints[anchor], waypoints[next], colliders)) {
+        next -= 1;
+      }
+      smoothed.push(waypoints[next].clone());
+      anchor = next;
+    }
+    return smoothed;
+  }
+
+  /**
+   * @param {number} startX
+   * @param {number} startZ
+   * @param {number} targetX
+   * @param {number} targetZ
+   * @param {{dynamicColliders?: THREE.Box3[]}} [options]
+   */
+  findPath(startX, startZ, targetX, targetZ, { dynamicColliders = [] } = {}) {
     if (![startX, startZ, targetX, targetZ].every(Number.isFinite)) {
       return this._result({
         status: 'invalid',
@@ -151,9 +257,11 @@ export class NavigationGrid {
     }
 
     const requestedTarget = new THREE.Vector3(targetX, 0, targetZ);
+    const validDynamicColliders = Array.isArray(dynamicColliders) ? dynamicColliders : [];
+    const dynamicBlocked = this._indexDynamicColliders(validDynamicColliders);
     const requestedStartCell = this.worldToCell(startX, startZ);
     const requestedTargetCell = this.worldToCell(targetX, targetZ);
-    const start = this._nearestWalkable(requestedStartCell);
+    const start = this._nearestWalkable(requestedStartCell, dynamicBlocked);
     if (!start) {
       return this._result({
         status: 'invalid',
@@ -162,7 +270,7 @@ export class NavigationGrid {
       });
     }
 
-    const target = this._nearestWalkable(requestedTargetCell);
+    const target = this._nearestWalkable(requestedTargetCell, dynamicBlocked);
     if (!target) {
       return this._result({
         status: 'invalid',
@@ -203,13 +311,14 @@ export class NavigationGrid {
       });
     }
 
-    const total = this.cols * this.rows;
-    const costs = new Float32Array(total);
+    const costs = this._costs;
     costs.fill(Infinity);
-    const previous = new Int32Array(total);
+    const previous = this._previous;
     previous.fill(-1);
-    const closed = new Uint8Array(total);
-    const heap = [];
+    const closed = this._closed;
+    closed.fill(0);
+    const heap = this._heap;
+    heap.length = 0;
     costs[startIndex] = 0;
     this._push(heap, {
       index: startIndex,
@@ -253,11 +362,12 @@ export class NavigationGrid {
       for (const [dx, dz, moveCost] of directions) {
         const nx = current.x + dx;
         const nz = current.z + dz;
-        if (!this.isWalkable(nx, nz)) continue;
+        if (!this.isWalkable(nx, nz, dynamicBlocked)) continue;
         if (
           dx !== 0 &&
           dz !== 0 &&
-          (!this.isWalkable(current.x + dx, current.z) || !this.isWalkable(current.x, current.z + dz))
+          (!this.isWalkable(current.x + dx, current.z, dynamicBlocked) ||
+            !this.isWalkable(current.x, current.z + dz, dynamicBlocked))
         )
           continue;
         const neighborIndex = this._index(nx, nz);
@@ -283,22 +393,10 @@ export class NavigationGrid {
       cells.reverse();
     }
 
-    const waypoints = [];
-    let lastDirection = null;
-    for (let i = 1; i < cells.length; i += 1) {
-      const direction = {
-        x: Math.sign(cells[i].x - cells[i - 1].x),
-        z: Math.sign(cells[i].z - cells[i - 1].z),
-      };
-      if (lastDirection && (direction.x !== lastDirection.x || direction.z !== lastDirection.z)) {
-        waypoints.push(this.cellToWorld(cells[i - 1].x, cells[i - 1].z));
-      }
-      lastDirection = direction;
-    }
-    if (cells.length > 0) {
-      const finalCell = cells[cells.length - 1];
-      waypoints.push(this.cellToWorld(finalCell.x, finalCell.z));
-    }
+    const cellWaypoints = cells.map((cell) => this.cellToWorld(cell.x, cell.z));
+    const allColliders = this._staticColliders.concat(validDynamicColliders);
+    const smoothed = this.smoothPath(cellWaypoints, allColliders);
+    const waypoints = smoothed.slice(1);
 
     return this._result({
       status: found ? 'complete' : 'partial',

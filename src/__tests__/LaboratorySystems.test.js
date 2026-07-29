@@ -59,6 +59,42 @@ describe('DoorSystem', () => {
     expect(system.doors).toHaveLength(0);
     expect(door.openAmount).toBe(0);
   });
+
+  it('keeps stable dynamic colliders synchronized with the moving panels', () => {
+    const panelGeometry = new THREE.BoxGeometry(1, 2, 0.1);
+    const leftPanel = new THREE.Mesh(panelGeometry);
+    const rightPanel = new THREE.Mesh(panelGeometry);
+    const group = new THREE.Group();
+    group.add(leftPanel, rightPanel);
+    const door = {
+      x: 0,
+      z: 0,
+      width: 4,
+      group,
+      leftPanel,
+      rightPanel,
+      indicatorMat: {
+        color: { setHex: vi.fn() },
+        emissive: { setHex: vi.fn() },
+      },
+      baseLeftX: -0.5,
+      baseRightX: 0.5,
+      openAmount: 0,
+      isOpen: false,
+    };
+    leftPanel.position.x = door.baseLeftX;
+    rightPanel.position.x = door.baseRightX;
+    const system = new DoorSystem([door]);
+    const colliders = system.getDynamicColliders();
+    const initialLeftMinX = colliders[0].min.x;
+
+    system.update(1, new THREE.Vector3(0, 0, 0));
+
+    expect(system.getDynamicColliders()).toBe(colliders);
+    expect(colliders).toHaveLength(2);
+    expect(colliders[0].min.x).toBeLessThan(initialLeftMinX);
+    expect(colliders[1].max.x).toBeGreaterThan(1);
+  });
 });
 
 describe('TestObjectSystem', () => {

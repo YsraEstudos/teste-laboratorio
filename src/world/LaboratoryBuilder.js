@@ -33,6 +33,8 @@ export class LaboratoryBuilder {
     this._buildTestingRoom();
     this._buildAtmosphere();
 
+    this.dynamicColliders = this.doorSystem.getDynamicColliders();
+    this.navigationColliders = [...this.colliders, ...this.dynamicColliders];
     this.rooms = ROOMS;
   }
 

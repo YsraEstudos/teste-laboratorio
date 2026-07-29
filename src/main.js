@@ -215,7 +215,7 @@ export class Game {
       this.player.setWindForce(this._windForce);
       this.player.update(delta, this.lab.colliders, this.lab.doors);
       this.windAbility.update(delta);
-      this.windChild.update(delta, this.lab.colliders);
+      this.windChild.update(delta, this.lab.navigationColliders);
       this.windFX.update(delta);
       this.lab.update(delta, this.player.position, this.wind);
       this.hud.update(delta);

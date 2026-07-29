@@ -1,17 +1,21 @@
 // @ts-check
 
+import * as THREE from 'three';
+
 /**
  * Owns the interactive door state and presentation updates for the laboratory.
- * Geometry and collider creation remain in LaboratoryBuilder for now; this
- * system only manages the runtime door lifecycle.
+ * Geometry creation remains in LaboratoryBuilder; this system owns the moving
+ * panel colliders and the runtime door lifecycle.
  */
 export class DoorSystem {
   /**
    * @param {Array<Record<string, any>>} doors
    */
   constructor(doors = []) {
-    this.doors = doors;
+    this.doors = [];
+    this.dynamicColliders = [];
     this.disposed = false;
+    for (const door of doors) this.addDoor(door);
   }
 
   /**
@@ -20,7 +24,27 @@ export class DoorSystem {
   addDoor(door) {
     if (this.disposed) return door;
     this.doors.push(door);
+    door.leftCollider ??= new THREE.Box3();
+    door.rightCollider ??= new THREE.Box3();
+    this.dynamicColliders.push(door.leftCollider, door.rightCollider);
+    this._syncDoorColliders(door);
     return door;
+  }
+
+  /**
+   * Returns the stable collection whose Box3 instances are updated in place.
+   *
+   * @returns {THREE.Box3[]}
+   */
+  getDynamicColliders() {
+    return this.dynamicColliders;
+  }
+
+  _syncDoorColliders(door) {
+    door.leftPanel?.updateWorldMatrix?.(true, false);
+    door.rightPanel?.updateWorldMatrix?.(true, false);
+    door.leftCollider?.setFromObject?.(door.leftPanel);
+    door.rightCollider?.setFromObject?.(door.rightPanel);
   }
 
   /**
@@ -43,6 +67,7 @@ export class DoorSystem {
       const slideDistance = door.width * 0.44 * door.openAmount;
       door.leftPanel.position.x = door.baseLeftX - slideDistance;
       door.rightPanel.position.x = door.baseRightX + slideDistance;
+      this._syncDoorColliders(door);
 
       if (door.openAmount > 0.25) {
         door.indicatorMat.color.setHex(0x54f08c);
@@ -60,5 +85,6 @@ export class DoorSystem {
     if (this.disposed) return;
     this.disposed = true;
     this.doors.length = 0;
+    this.dynamicColliders.length = 0;
   }
 }
