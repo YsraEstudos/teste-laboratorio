@@ -132,6 +132,7 @@ export class WindParticleSystem {
         maxLife: 1.2,
         startScale: 0.6,
         endScale: 3.8,
+        directional: false,
       });
     }
 
@@ -197,11 +198,12 @@ export class WindParticleSystem {
         velocity: new THREE.Vector3(),
         startScale: 0.4,
         endScale: 3.2,
+        directional: false,
       });
     }
   }
 
-  triggerWindBlast(origin, target, powerLevel = 1) {
+  triggerWindBlast(origin, target, powerLevel = 1, impulse = null) {
     const dir = new THREE.Vector3().subVectors(target, origin).normalize();
 
     // Calculate Perpendicular Vectors for Spiral Geometry
@@ -306,6 +308,78 @@ export class WindParticleSystem {
       dust.velocity.set(Math.cos(angle) * speed, 0, Math.sin(angle) * speed);
       dust.mesh.visible = true;
     }
+
+    // 5. Directional impact smoke — fumaça empurrada na direção da rajada
+    this._spawnImpactSmokeBurst(target, dir, powerLevel, this._perpA, this._perpB, impulse);
+  }
+
+  /**
+   * Spawns smoke at the impact point that flows along the blast direction,
+   * with curl turbulence ported from the former ambient wind field.
+   */
+  _spawnImpactSmokeBurst(impactPoint, direction, powerLevel, perpA, perpB, impulse) {
+    const impactCount = Math.min(this.maxSmokePuffs, 8 + powerLevel * 3);
+    const baseSpeed = 10 + powerLevel * 2.2;
+
+    for (let i = 0; i < impactCount; i++) {
+      const smoke = this.smokePuffs.find((item) => !item.active);
+      if (!smoke) break;
+
+      smoke.active = true;
+      smoke.life = 0;
+      smoke.maxLife = 1.0 + Math.random() * 0.8;
+      smoke.startScale = 0.35 + Math.random() * 0.25;
+      smoke.endScale = 3.2 + powerLevel * 0.45;
+      smoke.rotSpeed = (Math.random() - 0.5) * 4.5;
+      smoke.directional = true;
+      smoke.source = impulse?.source ?? 'blast';
+
+      const spread = (Math.random() - 0.5) * 0.55;
+      const lift = Math.random() * 0.35;
+      smoke.mesh.position
+        .copy(impactPoint)
+        .addScaledVector(perpA, spread)
+        .addScaledVector(perpB, (Math.random() - 0.5) * 0.55);
+      smoke.mesh.position.y += 0.15 + lift;
+
+      smoke.mesh.rotation.z = Math.random() * Math.PI * 2;
+      smoke.velocity
+        .copy(direction)
+        .multiplyScalar(baseSpeed + Math.random() * 4)
+        .addScaledVector(perpA, (Math.random() - 0.5) * 3.5)
+        .addScaledVector(perpB, (Math.random() - 0.5) * 3.5);
+      smoke.velocity.y += 1.2 + Math.random() * 1.8;
+      smoke.mesh.visible = true;
+    }
+
+    // Impact dust pushed along blast direction
+    const dustCount = Math.min(this.maxDustPuffs, 10 + powerLevel * 2);
+    for (let i = 0; i < dustCount; i++) {
+      const dust = this.dustPuffs.find((item) => !item.active);
+      if (!dust) break;
+
+      dust.active = true;
+      dust.life = 0;
+      dust.maxLife = 0.9 + Math.random() * 0.7;
+      dust.startScale = 0.3 + Math.random() * 0.2;
+      dust.endScale = 2.8 + powerLevel * 0.35;
+      dust.directional = true;
+      dust.source = impulse?.source ?? 'blast';
+
+      dust.mesh.position
+        .copy(impactPoint)
+        .addScaledVector(direction, -0.15 + Math.random() * 0.35)
+        .addScaledVector(perpA, (Math.random() - 0.5) * 0.8);
+      dust.mesh.position.y = 0.06 + Math.random() * 0.25;
+      dust.mesh.rotation.z = Math.random() * Math.PI * 2;
+
+      dust.velocity
+        .copy(direction)
+        .multiplyScalar(4.5 + Math.random() * 5 + powerLevel * 0.6)
+        .addScaledVector(perpA, (Math.random() - 0.5) * 2.5);
+      dust.velocity.y = 0.4 + Math.random() * 1.2;
+      dust.mesh.visible = true;
+    }
   }
 
   update(delta) {
@@ -380,12 +454,19 @@ export class WindParticleSystem {
 
       const progress = smoke.life / smoke.maxLife;
 
-      // Curl turbulence on smoke
-      smoke.velocity.x += Math.sin(smoke.mesh.position.z * 0.3 + this.time * 2) * delta * 2;
-      smoke.velocity.z += Math.cos(smoke.mesh.position.x * 0.3 + this.time * 2) * delta * 2;
-
+      // Curl turbulence — directional bursts keep flowing along blast axis
+      if (smoke.directional) {
+        const curlAlong =
+          Math.sin(smoke.mesh.position.z * 0.35 + this.time * 2.8) * 0.6 +
+          Math.cos(smoke.mesh.position.x * 0.28 + this.time * 2.2) * 0.4;
+        smoke.velocity.y += curlAlong * delta * 1.8;
+        smoke.velocity.multiplyScalar(Math.exp(-1.8 * delta));
+      } else {
+        smoke.velocity.x += Math.sin(smoke.mesh.position.z * 0.3 + this.time * 2) * delta * 2;
+        smoke.velocity.z += Math.cos(smoke.mesh.position.x * 0.3 + this.time * 2) * delta * 2;
+        smoke.velocity.multiplyScalar(Math.exp(-2.5 * delta));
+      }
       smoke.mesh.position.addScaledVector(smoke.velocity, delta);
-      smoke.velocity.multiplyScalar(Math.exp(-2.5 * delta));
       smoke.mesh.rotation.z += smoke.rotSpeed * delta;
 
       // Wall Updraft on Smoke
@@ -436,7 +517,7 @@ export class WindParticleSystem {
 
       const progress = dust.life / dust.maxLife;
       dust.mesh.position.addScaledVector(dust.velocity, delta);
-      dust.velocity.multiplyScalar(Math.exp(-3.0 * delta));
+      dust.velocity.multiplyScalar(Math.exp(dust.directional ? -2.2 : -3.0) * delta);
 
       // Wall Updraft on Dust
       if (dust.mesh.position.x < -11.0 || dust.mesh.position.x > 11.0 || dust.mesh.position.z < -63.0) {

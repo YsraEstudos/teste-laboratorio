@@ -125,19 +125,29 @@ vi.mock('../effects/WindParticleSystem.js', () => ({
   },
 }));
 
-vi.mock('../wind/WindSystem.js', () => ({
-  WindSystem: class {
-    constructor() {
-      this.startAudio = vi.fn();
-      this.resumeAudio = vi.fn();
-      this.suspendAudio = vi.fn();
-      this.update = vi.fn();
-      this.samplePlayerForce = vi.fn();
-      this.dispose = vi.fn(() => harness.lifecycle.push('wind'));
-      harness.instances.wind.push(this);
-    }
-  },
-}));
+vi.mock('../wind/WindSystem.js', async () => {
+  const { applyWindImpulseToObject } = await import('../wind/WindImpulse.js');
+  return {
+    WindSystem: class {
+      constructor() {
+        this.startAudio = vi.fn();
+        this.resumeAudio = vi.fn();
+        this.suspendAudio = vi.fn();
+        this.update = vi.fn();
+        this.samplePlayerForce = vi.fn();
+        this.applyImpulse = vi.fn((impulse, objects) => {
+          let applied = 0;
+          for (const object of objects) {
+            if (applyWindImpulseToObject(object, impulse, 0)) applied += 1;
+          }
+          return applied;
+        });
+        this.dispose = vi.fn(() => harness.lifecycle.push('wind'));
+        harness.instances.wind.push(this);
+      }
+    },
+  };
+});
 
 vi.mock('../ui/RadialMenu.js', () => ({
   RadialMenu: class {
@@ -540,12 +550,14 @@ describe('Game lifecycle', () => {
     runAnimationFrames(game, 14);
 
     expect(game.windFX.triggerWindBlast).toHaveBeenCalledOnce();
-    const [releasedOrigin, releasedTarget, releasedPower] = game.windFX.triggerWindBlast.mock.calls[0];
+    const [releasedOrigin, releasedTarget, releasedPower, releasedImpulse] = game.windFX.triggerWindBlast.mock.calls[0];
     expect(releasedOrigin).toMatchObject({ x: 3.2, y: 0, z: 4.5 });
     expect(releasedTarget).toMatchObject({ x: 4, y: 0, z: 4.5 });
     expect(releasedPower).toBe(1);
     expect(Object.isFrozen(releasedOrigin)).toBe(true);
     expect(Object.isFrozen(releasedTarget)).toBe(true);
+    expect(releasedImpulse.source).toBe('blast');
+    expect(Object.isFrozen(releasedImpulse)).toBe(true);
     expect(selectedTarget.velocity.x).toBeCloseTo(5.7);
     expect(selectedTarget.velocity.y).toBeCloseTo(4.3);
     expect(game.windChild.energy).toBe(40);

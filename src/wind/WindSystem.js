@@ -3,6 +3,7 @@ import { WindField } from './WindField.js';
 import { WindDustSystem } from './WindDustSystem.js';
 import { WindStreakSystem } from './WindStreakSystem.js';
 import { WindAudio } from './WindAudio.js';
+import { applyWindImpulseToObject } from './WindImpulse.js';
 
 /** Coordinates ambient airflow, visual effects, procedural audio, and forces. */
 export class WindSystem {
@@ -14,6 +15,7 @@ export class WindSystem {
     this.camera = camera;
     this._playerWind = new THREE.Vector3();
     this._objectWind = new THREE.Vector3();
+    this.disposed = false;
   }
 
   startAudio() {
@@ -62,6 +64,19 @@ export class WindSystem {
     }
   }
 
+  /**
+   * @param {import('./WindImpulse.js').WindImpulse} impulse
+   * @param {Array<Record<string, any>>} objects
+   * @returns {number}
+   */
+  applyImpulse(impulse, objects) {
+    let applied = 0;
+    for (const object of objects) {
+      if (applyWindImpulseToObject(object, impulse)) applied += 1;
+    }
+    return applied;
+  }
+
   suspendAudio() {
     this.audio.suspend();
   }
@@ -71,6 +86,8 @@ export class WindSystem {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.dust.dispose();
     this.streaks.dispose();
     this.audio.dispose();

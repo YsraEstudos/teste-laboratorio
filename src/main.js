@@ -5,7 +5,7 @@ import { PlayerController } from './entities/PlayerController.js';
 import { WindChild } from './entities/WindChild.js';
 import { WindParticleSystem } from './effects/WindParticleSystem.js';
 import { WindAbilitySystem } from './abilities/WindAbilitySystem.js';
-import { applyWindImpulse } from './wind/WindImpulse.js';
+import { createWindImpulse } from './wind/WindImpulse.js';
 import { WindSystem } from './wind/WindSystem.js';
 import { RadialMenu } from './ui/RadialMenu.js';
 import { TacMap } from './ui/TacMap.js';
@@ -176,13 +176,23 @@ export class Game {
   }
 
   _applyWindBlast({ targetObject, origin, target, powerLevel, happiness, energy }) {
-    // Trigger high-quality particle vortex & shockwaves
-    this.windFX.triggerWindBlast(origin, target, powerLevel);
-
     // Calculate Effective Power: PowerLevel (1-10) * Happiness% * Energy%
     const effectivePower = powerLevel * (happiness / 100) * (energy / 100);
     const pushVector = new THREE.Vector3().subVectors(target, origin).normalize();
-    applyWindImpulse(targetObject, pushVector, effectivePower);
+    const impulse = createWindImpulse({
+      origin,
+      direction: pushVector,
+      power: effectivePower,
+      radius: Math.sqrt(Game.CONSTANTS.WIND_BLAST_RANGE_SQ),
+      falloff: 'none',
+      verticalLift: 0,
+      duration: 0.2,
+      source: 'blast',
+    });
+
+    // Visual and physical responses receive the same immutable blast event.
+    this.windFX.triggerWindBlast(origin, target, powerLevel, impulse);
+    this.wind.applyImpulse(impulse, [targetObject]);
   }
 
   /**
