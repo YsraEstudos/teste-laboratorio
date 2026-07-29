@@ -11,11 +11,23 @@ export class TextureGenerator {
   }
 
   static _texture(width, height, draw, colorSpace = true) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    draw(context, width, height);
+    let canvas = null;
+    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      try {
+        canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (context) {
+          draw(context, width, height);
+        }
+      } catch {
+        canvas = null;
+      }
+    }
+    if (!canvas) {
+      canvas = { width, height };
+    }
     const texture = new THREE.CanvasTexture(canvas);
     texture.generateMipmaps = true;
     texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -471,6 +483,141 @@ export class TextureGenerator {
       ctx.restore();
     });
     this._cache.set('createTreeLeafTexture', texture);
+    return texture;
+  }
+
+  /**
+   * @returns {THREE.CanvasTexture}
+   */
+  static createSandTexture() {
+    if (this._cache.has('createSandTexture')) return this._cache.get('createSandTexture');
+    const texture = this._texture(512, 512, (ctx, width, height) => {
+      // Golden desert base
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#e5c183');
+      gradient.addColorStop(0.5, '#d9b270');
+      gradient.addColorStop(1, '#ebd097');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Sand Dune Wave Ripples
+      ctx.strokeStyle = 'rgba(189, 147, 85, 0.45)';
+      ctx.lineWidth = 6;
+      for (let y = -20; y < height + 40; y += 32) {
+        ctx.beginPath();
+        for (let x = -20; x <= width + 20; x += 16) {
+          const offset = Math.sin(x * 0.05 + y * 0.08) * 8 + Math.cos(x * 0.03) * 4;
+          if (x === -20) ctx.moveTo(x, y + offset);
+          else ctx.lineTo(x, y + offset);
+        }
+        ctx.stroke();
+      }
+
+      // Highlight on dune crests
+      ctx.strokeStyle = 'rgba(255, 243, 215, 0.4)';
+      ctx.lineWidth = 3;
+      for (let y = -18; y < height + 40; y += 32) {
+        ctx.beginPath();
+        for (let x = -20; x <= width + 20; x += 16) {
+          const offset = Math.sin(x * 0.05 + y * 0.08) * 8 + Math.cos(x * 0.03) * 4 - 3;
+          if (x === -20) ctx.moveTo(x, y + offset);
+          else ctx.lineTo(x, y + offset);
+        }
+        ctx.stroke();
+      }
+
+      // Fine sand grain noise
+      this._noise(ctx, width, height, 3200, ['#ffffff', '#fff2d6', '#c49954', '#8a6224', '#f7e1b5'], 0.22);
+    });
+    this._cache.set('createSandTexture', texture);
+    return texture;
+  }
+  /**
+   * @returns {THREE.CanvasTexture}
+   */
+  static createAdvancedSandAlbedoMap() {
+    if (this._cache.has('createAdvancedSandAlbedoMap')) return this._cache.get('createAdvancedSandAlbedoMap');
+    const texture = this._texture(512, 512, (ctx, width, height) => {
+      // Gradiente tricolor PBR rico (areia dourada exposta, areia seca de crista e fundo de vale)
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#e0ba7d'); // exposed golden sand
+      gradient.addColorStop(0.5, '#e8c48a'); // dry crest sand
+      gradient.addColorStop(1, '#c69d60'); // valley bottom
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Fundo de vale com micro-grãos de contraste suave
+      this._noise(ctx, width, height, 4000, ['#ffffff', '#f4d6a6', '#9c733a', '#745121', '#e8cd9c'], 0.15);
+    });
+    this._cache.set('createAdvancedSandAlbedoMap', texture);
+    return texture;
+  }
+
+  /**
+   * @returns {THREE.CanvasTexture}
+   */
+  static createAdvancedSandNormalMap() {
+    if (this._cache.has('createAdvancedSandNormalMap')) return this._cache.get('createAdvancedSandNormalMap');
+    const texture = this._texture(1024, 1024, (ctx, width, height) => {
+      // Base normal (flat pointing UP in tangent space: R=128, G=128, B=255)
+      ctx.fillStyle = '#8080ff';
+      ctx.fillRect(0, 0, width, height);
+      
+      // Ondas sutis de vento
+      ctx.strokeStyle = 'rgba(140, 150, 255, 0.12)';
+      ctx.lineWidth = 6;
+      for (let y = -20; y < height + 40; y += 24) {
+        ctx.beginPath();
+        for (let x = -20; x <= width + 20; x += 12) {
+          const offset = Math.sin(x * 0.05 + y * 0.08) * 8;
+          if (x === -20) ctx.moveTo(x, y + offset);
+          else ctx.lineTo(x, y + offset);
+        }
+        ctx.stroke();
+      }
+
+      // Gerador de Normal Map de alta frequência para microrrugosidade tridimensional com distribuição gaussiana
+      for (let i = 0; i < 40000; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        
+        // Box-Muller transform para distribuição Gaussiana de normais
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        
+        const r = Math.max(0, Math.min(255, Math.floor(128 + z0 * 20)));
+        const g = Math.max(0, Math.min(255, Math.floor(128 + z0 * 20)));
+        const b = Math.max(128, Math.min(255, Math.floor(255 - Math.abs(z0 * 15))));
+        
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        const size = Math.random() * 2.0 + 0.5;
+        ctx.fillRect(x, y, size, size);
+      }
+    }, false); // PBR data maps should not be in SRGB
+    this._cache.set('createAdvancedSandNormalMap', texture);
+    return texture;
+  }
+
+  /**
+   * @returns {THREE.CanvasTexture}
+   */
+  static createAdvancedSandRoughnessMap() {
+    if (this._cache.has('createAdvancedSandRoughnessMap')) return this._cache.get('createAdvancedSandRoughnessMap');
+    const texture = this._texture(512, 512, (ctx, width, height) => {
+      // Mapa de rugosidade com variação de especularidade e oclusão (0.70 a 0.95)
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#b2b2b2'); // Crests: ~0.70 roughness
+      gradient.addColorStop(1, '#f2f2f2'); // Valleys: ~0.95 roughness
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Oclusão e variação fina de especularidade com poeira
+      this._noise(ctx, width, height, 8000, ['#ffffff', '#cccccc', '#e6e6e6', '#b3b3b3'], 0.15);
+    }, false);
+    this._cache.set('createAdvancedSandRoughnessMap', texture);
     return texture;
   }
 }

@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import { WindField } from './WindField.js';
 import { WindDustSystem } from './WindDustSystem.js';
-import { WindStreakSystem } from './WindStreakSystem.js';
+
 import { WindAudio } from './WindAudio.js';
 import { applyWindImpulseToObject } from './WindImpulse.js';
 
 /** Coordinates ambient airflow, visual effects, procedural audio, and forces. */
 export class WindSystem {
-  constructor(scene, camera, laboratory) {
+  constructor(scene, camera, laboratory, vfxManager) {
     this.field = new WindField(laboratory.rooms);
-    this.dust = new WindDustSystem(scene, laboratory.colliders, this.field);
-    this.streaks = new WindStreakSystem(scene, this.field);
+    this.dust = new WindDustSystem(scene, laboratory.colliders, this.field, vfxManager);
+
     this.audio = new WindAudio();
     this.camera = camera;
     this._playerWind = new THREE.Vector3();
@@ -25,7 +25,7 @@ export class WindSystem {
   update(delta) {
     this.field.update(delta);
     this.dust.update(delta, this.camera);
-    this.streaks.update(delta, this.camera);
+
     this.audio.update(delta, this.field.intensity, this.field.gustIntensity);
   }
 
@@ -44,13 +44,12 @@ export class WindSystem {
       const gust = this.field.gustIntensity;
 
       if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
-        const response = obj.type === 'folha_arvore' ? 2.7 : 2.15;
-        obj.velocity.x += this._objectWind.x * delta * response;
-        obj.velocity.z += this._objectWind.z * delta * response;
-        if (speed > 1.05) {
-          obj.velocity.y += delta * (speed - 0.85) * (0.75 + gust * 1.25);
-          obj.velocity.y += Math.sin(this.field.time * 9 + obj.mesh.position.x * 2.4) * delta * 0.55;
+        if (speed > 1.8 && gust > 0.65) {
+          const response = obj.type === 'folha_arvore' ? 2.7 : 2.15;
+          obj.velocity.x += this._objectWind.x * delta * response;
+          obj.velocity.z += this._objectWind.z * delta * response;
         }
+        // Removed ambient vertical lift so leaves don't float nonsensically. They only lift on direct blast.
       } else if (obj.type === 'papelao') {
         if (speed > 2.05) {
           obj.velocity.x += this._objectWind.x * delta * 0.48;
@@ -89,7 +88,7 @@ export class WindSystem {
     if (this.disposed) return;
     this.disposed = true;
     this.dust.dispose();
-    this.streaks.dispose();
+
     this.audio.dispose();
   }
 }

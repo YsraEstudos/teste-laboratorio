@@ -14,6 +14,12 @@ import { HUD } from './ui/HUD.js';
 import { PerformanceProfiler } from './engine/PerformanceProfiler.js';
 import { LaboratoryBuilder } from './world/LaboratoryBuilder.js';
 import { NavigationGrid } from './world/NavigationGrid.js';
+import { ObjectHighlightSystem } from './world/ObjectHighlightSystem.js';
+import { FlashlightSystem } from './entities/FlashlightSystem.js';
+import { gameStore } from './state/gameStore.js';
+import { VFXManager } from './effects/VFXManager.js';
+import { SandVFXSystem } from './effects/SandVFXSystem.js';
+import { GroundDustSystem } from './effects/GroundDustSystem.js';
 
 export class Game {
   static CONSTANTS = {
@@ -38,11 +44,37 @@ export class Game {
     this.lab = new LaboratoryBuilder(this.renderer.scene);
     this.navigation = new NavigationGrid(this.lab.colliders);
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
+    this.objectHighlight = new ObjectHighlightSystem();
+    this.vfxManager = new VFXManager(this.renderer.scene);
+    this.sandVFX = new SandVFXSystem(this.renderer.scene);
+    this.groundDust = new GroundDustSystem(this.renderer.scene);
 
     // Player Character
     this.player = new PlayerController(this.renderer.camera, this.input, this.renderer.scene);
     this.player.setNavigation(this.navigation);
     this._windForce = new THREE.Vector3();
+
+    // Flashlight System
+    this.flashlight = new FlashlightSystem(this.renderer.scene);
+    this.flashlight.setEquipped(gameStore.state.isFlashlightEquipped);
+    this.flashlight.setEnabled(gameStore.state.isFlashlightOn);
+
+    this.input.onInventoryToggle = () => {
+      gameStore.setState({ inventoryOpen: !gameStore.state.inventoryOpen });
+    };
+
+    this.input.onFlashlightToggle = () => {
+      if (!gameStore.state.isFlashlightEquipped) return;
+      const nextState = !gameStore.state.isFlashlightOn;
+      gameStore.setState({ isFlashlightOn: nextState });
+    };
+
+    this._unsubscribeStore = gameStore.subscribe((state) => {
+      if (this.flashlight) {
+        this.flashlight.setEquipped(state.isFlashlightEquipped);
+        this.flashlight.setEnabled(state.isFlashlightOn);
+      }
+    });
 
     // Wind Particle FX
     this.windFX = new WindParticleSystem(this.renderer.scene);
@@ -71,6 +103,33 @@ export class Game {
   _bindEvents(canvas) {
     // Left-click movement / interaction
     this._onPointerDown = (event) => {
+      if (this.isTargetingWindBlast && event.button === 0) {
+        this.isTargetingWindBlast = false;
+        const canvas = document.getElementById('game-canvas');
+        if (canvas) canvas.style.cursor = 'default';
+
+        const rect = canvas.getBoundingClientRect();
+        this._pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        this._raycaster.setFromCamera(this._pointer, this.renderer.camera);
+
+        const intersects = this._raycaster.intersectObjects(this.renderer.scene.children, true);
+        let targetObj = null;
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          const testObjects = Array.isArray(this.lab.testObjects) ? this.lab.testObjects : (this.lab.testObjects?.objects || []);
+          for (const obj of testObjects) {
+             if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh) {
+                targetObj = obj;
+                break;
+             }
+          }
+        }
+        
+        this.triggerWindBlastOnObjects(targetObj);
+        return;
+      }
+
       if (this.isPlaying && event.button === 0) {
         this.player.handlePointerDown(event);
       }
@@ -145,31 +204,69 @@ export class Game {
   }
 
   /**
-   * Triggers wind blast
+   * Enters targeting mode for Wind Blast
    */
-  triggerWindBlastOnObjects() {
+  enterWindBlastTargetingMode() {
+    if (this.destroyed || !this.isPlaying) return;
+    this.isTargetingWindBlast = true;
+    const canvas = document.getElementById('game-canvas');
+    if (canvas) canvas.style.cursor = 'crosshair';
+  }
+
+  /**
+   * Triggers wind blast against a specified target object or nearest object
+   * @param {Record<string, any>} [targetObject=null]
+   */
+  triggerWindBlastOnObjects(targetObject = null) {
     if (this.destroyed || !this.windChild || !this.lab.testObjects) return;
 
-    // Find closest test object to Wind Child
-    let closestObj = null;
-    let minDist = Infinity;
-    for (const obj of this.lab.testObjects) {
-      const dist = this.windChild.position.distanceTo(obj.position);
-      if (dist < minDist) {
-        minDist = dist;
-        closestObj = obj;
+    let targetObj = targetObject;
+    const testObjects = Array.isArray(this.lab.testObjects)
+      ? this.lab.testObjects
+      : (this.lab.testObjects?.objects || []);
+
+    if (!targetObj) {
+      // Find closest test object to Wind Child
+      let minDist = Infinity;
+      for (const obj of testObjects) {
+        const pos = obj.position || obj.mesh?.position;
+        if (!pos) continue;
+        const dist = this.windChild.position.distanceTo(pos);
+        if (dist < minDist) {
+          minDist = dist;
+          targetObj = obj;
+        }
       }
     }
 
-    if (!closestObj || minDist > Math.sqrt(Game.CONSTANTS.WIND_BLAST_RANGE_SQ)) {
-      alert('Nenhum objeto de teste "Confirmed 42" próximo o suficiente do Wind Child!');
+    if (!targetObj) {
+      alert('Nenhum objeto de teste "Confirmed 42" selecionado ou próximo o suficiente do Wind Child!');
       return;
     }
 
+    const targetPos = targetObj.position || targetObj.mesh?.position;
+
+    // Highlight target object for 400ms in cyan emissive flash
+    if (this.objectHighlight) {
+      this.objectHighlight.highlight(targetObj, 400);
+    }
+
+    // Orient Wind Child model towards the target
+    if (this.windChild && this.windChild.position && targetPos) {
+      const dx = targetPos.x - this.windChild.position.x;
+      const dz = targetPos.z - this.windChild.position.z;
+      if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
+        this.windChild.rotation = Math.atan2(dx, dz);
+        if (this.windChild.model && this.windChild.model.rotation) {
+          this.windChild.model.rotation.y = this.windChild.rotation;
+        }
+      }
+    }
+
     this.windAbility.start({
-      targetObject: closestObj,
+      targetObject: targetObj,
       origin: this.windChild.position,
-      target: closestObj.position,
+      target: targetPos,
       powerLevel: this.windChild.powerLevel,
       happiness: this.windChild.happiness,
       energy: this.windChild.energy,
@@ -194,6 +291,10 @@ export class Game {
     // Visual and physical responses receive the same immutable blast event.
     this.windFX.triggerWindBlast(origin, target, powerLevel, impulse);
     this.wind.applyImpulse(impulse, [targetObject]);
+    
+    if (this.lab?.gpuSandSystem) {
+      this.lab.gpuSandSystem.triggerSandBlast(origin, target, effectivePower);
+    }
   }
 
   /**
@@ -214,9 +315,20 @@ export class Game {
       this.wind.samplePlayerForce(this.player.position, this._windForce);
       this.player.setWindForce(this._windForce);
       this.player.update(delta, this.lab.colliders, this.lab.doors);
+
+      if (this.flashlight && this.player) {
+        const angle = (this.player.model && this.player.model.rotation) ? this.player.model.rotation.y : 0;
+        const forward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
+        this.flashlight.update(this.player.position, forward);
+      }
+
       this.windAbility.update(delta);
       this.windChild.update(delta, this.lab.navigationColliders, this.lab.dynamicColliders);
       this.windFX.update(delta);
+      this.vfxManager?.update?.(delta);
+      this.sandVFX?.update?.(delta);
+      this.groundDust?.update?.(delta);
+      this.objectHighlight.update(delta);
       this.lab.update(delta, this.player.position, [this.windChild.position], this.wind);
       this.hud.update(delta);
       this.profiler.endCPU();
@@ -245,11 +357,17 @@ export class Game {
       if (this._onContextMenu) canvas.removeEventListener('contextmenu', this._onContextMenu);
     }
 
+    if (this._unsubscribeStore) this._unsubscribeStore();
+    this.flashlight?.dispose?.();
     this.tacMap?.destroy?.();
     this.radialMenu?.destroy?.();
     this.hud?.destroy?.();
     this.profiler?.destroy?.();
     this.input?.dispose?.();
+    this.objectHighlight?.dispose?.();
+    this.vfxManager?.dispose?.();
+    this.sandVFX?.dispose?.();
+    this.groundDust?.dispose?.();
     this.windAbility?.dispose?.();
     this.windFX?.dispose?.();
     this.wind?.dispose?.();

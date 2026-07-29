@@ -439,7 +439,9 @@ export class RadialMenu {
   }
 
   _triggerWindBlast() {
-    if (this.game.triggerWindBlastOnObjects) {
+    if (this.game.enterWindBlastTargetingMode) {
+      this.game.enterWindBlastTargetingMode();
+    } else if (this.game.triggerWindBlastOnObjects) {
       this.game.triggerWindBlastOnObjects();
     }
   }

@@ -52,4 +52,19 @@ describe('LaboratoryBuilder.dispose', () => {
     expect(builder.testObjectSystem.disposed).toBe(true);
     expect(builder.testObjects).toHaveLength(0);
   });
+
+  it('keeps real area lights within the startup render budget', () => {
+    vi.spyOn(TextureGenerator, '_texture').mockImplementation(() => new THREE.Texture());
+
+    const scene = new THREE.Scene();
+    const builder = new LaboratoryBuilder(scene);
+    const areaLights = [];
+
+    builder.root.traverse((object) => {
+      if (object.isRectAreaLight) areaLights.push(object);
+    });
+
+    expect(areaLights.length).toBeLessThanOrEqual(8);
+    builder.dispose();
+  });
 });

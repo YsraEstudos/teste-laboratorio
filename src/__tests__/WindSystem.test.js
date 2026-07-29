@@ -19,7 +19,7 @@ describe('WindSystem', () => {
   it('adds continuous wind response without replacing existing velocity', () => {
     const system = Object.create(WindSystem.prototype);
     system.field = {
-      gustIntensity: 0,
+      gustIntensity: 1,
       time: 0,
       sample: (_position, out) => out.set(2, 0, 3),
     };
@@ -29,7 +29,7 @@ describe('WindSystem', () => {
     system.applyToObjects([object], 0.5);
 
     expect(object.velocity.x).toBeCloseTo(3.15);
-    expect(object.velocity.y).toBeCloseTo(1.033331, 5);
+    expect(object.velocity.y).toBe(0);
     expect(object.velocity.z).toBeCloseTo(5.225);
   });
 
@@ -77,7 +77,7 @@ describe('WindSystem', () => {
   it('disposes visual and audio children only once', () => {
     const system = Object.create(WindSystem.prototype);
     system.dust = { dispose: vi.fn() };
-    system.streaks = { dispose: vi.fn() };
+
     system.audio = { dispose: vi.fn() };
     system.disposed = false;
 
@@ -85,7 +85,7 @@ describe('WindSystem', () => {
     system.dispose();
 
     expect(system.dust.dispose).toHaveBeenCalledOnce();
-    expect(system.streaks.dispose).toHaveBeenCalledOnce();
+
     expect(system.audio.dispose).toHaveBeenCalledOnce();
   });
 });

@@ -4,10 +4,11 @@ export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.disposed = false;
+    this.composer = null;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0d151d);
-    this.scene.fog = new THREE.FogExp2(0x0d151d, 0.004);
+    this.scene.background = new THREE.Color(0x0a1017);
+    this.scene.fog = new THREE.FogExp2(0x0a1017, 0.005);
 
     this.viewSize = 24;
     const aspect = window.innerWidth / window.innerHeight;
@@ -29,27 +30,26 @@ export class Renderer {
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
+    this.renderer.toneMappingExposure = 1.1;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this._setupLighting();
-
     this._onResize = this.onWindowResize.bind(this);
     window.addEventListener('resize', this._onResize);
   }
 
   _setupLighting() {
-    const ambient = new THREE.AmbientLight(0x6b7d8f, 0.75);
+    const ambient = new THREE.AmbientLight(0x405566, 0.45);
     this.scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0xd9ecff, 0x25323b, 1.45);
+    const hemi = new THREE.HemisphereLight(0x90b5d0, 0x15222e, 0.85);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xffeedd, 2.5);
+    const sun = new THREE.DirectionalLight(0xffeedd, 1.6);
     sun.position.set(35, 80, 55);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;

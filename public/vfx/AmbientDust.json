@@ -1,0 +1,41 @@
+{
+  "dependencies": [],
+  "type": "ParticleSystem",
+  "name": "AmbientDust",
+  "version": "1.0.0",
+  "worldSpace": true,
+  "startLife": {
+    "type": "ConstantValue",
+    "value": 5
+  },
+  "startSpeed": {
+    "type": "ConstantValue",
+    "value": 1
+  },
+  "startSize": {
+    "type": "ConstantValue",
+    "value": 0.1
+  },
+  "startColor": {
+    "type": "Color",
+    "r": 1, "g": 1, "b": 1, "a": 1
+  },
+  "startRotation": {
+    "type": "ConstantValue",
+    "value": 0
+  },
+  "emissionState": {
+    "rateOverTime": {
+      "type": "ConstantValue",
+      "value": 10
+    }
+  },
+  "shape": {
+    "type": "Box",
+    "width": 10,
+    "height": 10,
+    "depth": 10,
+    "thickness": 1
+  },
+  "materials": []
+}

@@ -444,28 +444,8 @@ export class WindChild {
     this.auraGroup = new THREE.Group();
     this.floatContainer.add(this.auraGroup);
 
-    // 1. Swirling Wind Ribbon Rings
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0x55f3ff,
-      transparent: true,
-      opacity: 0.5,
-      wireframe: true,
-      side: THREE.DoubleSide,
-    });
-
-    this.windRing1 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 32), ringMat);
-    this.windRing1.rotation.x = Math.PI / 2.3;
-    this.windRing1.position.y = 0.45;
-    this.auraGroup.add(this.windRing1);
-
-    this.windRing2 = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 32), ringMat);
-    this.windRing2.rotation.x = Math.PI / 1.8;
-    this.windRing2.rotation.y = 0.4;
-    this.windRing2.position.y = 0.6;
-    this.auraGroup.add(this.windRing2);
-
-    // 2. Dynamic Point Light attached to wind power
-    this.windLight = new THREE.PointLight(0x42f5e3, 1.8, 4.0);
+    // Dynamic Point Light attached to wind power (subtle ambient light)
+    this.windLight = new THREE.PointLight(0x42f5e3, 0.8, 3.0);
     this.windLight.position.set(0, 0.6, 0);
     this.auraGroup.add(this.windLight);
 
@@ -505,6 +485,7 @@ export class WindChild {
     });
 
     this.particles = new THREE.Points(geometry, particleMat);
+    this.particles.visible = false; // Hidden in idle; only shows during wind blast charge/attack!
     this.auraGroup.add(this.particles);
 
     this._updateAuraParameters();
@@ -513,13 +494,8 @@ export class WindChild {
   _updateAuraParameters() {
     const pFactor = this._powerLevel / 10;
     if (this.windLight) {
-      this.windLight.intensity = 1.0 + pFactor * 2.5;
+      this.windLight.intensity = this.isCharging || this.isBlasting ? 2.5 + pFactor * 2.0 : 0.6;
       this.windLight.distance = 3.0 + pFactor * 3.0;
-    }
-    if (this.windRing1 && this.windRing2) {
-      const s = 1.0 + pFactor * 0.3;
-      this.windRing1.scale.set(s, s, s);
-      this.windRing2.scale.set(s, s, s);
     }
   }
 
@@ -818,11 +794,17 @@ export class WindChild {
   }
 
   _updateChargePose(animSpeed) {
-    // Tremble parameters scaling with powerLevel (1 to 10)
-    const trembleFreq = 28.0 + this._powerLevel * 6.0;
-    const trembleAmp = (0.008 + this._powerLevel * 0.0035) * this.chargeWeight;
+    const w = this.chargeWeight;
 
-    // High frequency tremor noise calculation
+    // Show elemental particles ONLY when charging or blasting
+    if (this.particles) {
+      this.particles.visible = w > 0.05 || this.isBlasting;
+    }
+
+    // Tremble parameters scaling with powerLevel
+    const trembleFreq = 28.0 + this._powerLevel * 6.0;
+    const trembleAmp = (0.008 + this._powerLevel * 0.0035) * w;
+
     const t = this.time * trembleFreq;
     this.leftHandTremble.set(
       Math.sin(t * 1.1) * trembleAmp,
@@ -835,42 +817,41 @@ export class WindChild {
       Math.cos(t * 0.85) * trembleAmp,
     );
 
-    // Base Idle Arm Rotations
+    // Idle Arm Angles
     const idleLeftRotX = Math.sin(this.time * 2.0) * 0.05;
     const idleRightRotX = -Math.sin(this.time * 2.0) * 0.05;
     const idleLeftRotZ = 0.15;
     const idleRightRotZ = -0.15;
 
-    // Charge Pose Target: Arms extended forward, hands facing out
-    const chargeArmRotX = -Math.PI * 0.45; // Extend arms forward
-    const chargeLeftArmRotY = 0.25;
-    const chargeRightArmRotY = -0.25;
+    // 3-Stage Attack Pose (Stage 1 & Stage 2):
+    // Stage 1: Raise arms 90 deg out, forearms bent up 90 deg, fingers pointing straight up!
+    // Stage 2: Clench fists & tremble with glowing elemental aura.
+    const stage1ArmRotX = 0; // Arms raised to shoulders (90 deg out)
+    const stage1ArmRotZ = -Math.PI * 0.45; // 90 degrees out sideways
+    const stage1ForearmX = -Math.PI * 0.5; // Forearm bent 90 degrees up, fingers up!
 
-    // Blend between Idle and Charge Arm Rotations
-    const w = this.chargeWeight;
+    // Blend Idle -> Stage 1 & 2 Charge Pose
+    this.leftArmPivot.rotation.x = THREE.MathUtils.lerp(idleLeftRotX, stage1ArmRotX, w) + this.leftHandTremble.x * 2.0;
+    this.leftArmPivot.rotation.y = THREE.MathUtils.lerp(0, 0.2, w);
+    this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(idleLeftRotZ, -stage1ArmRotZ, w);
 
-    this.leftArmPivot.rotation.x = THREE.MathUtils.lerp(idleLeftRotX, chargeArmRotX, w) + this.leftHandTremble.x * 2.0;
-    this.leftArmPivot.rotation.y = THREE.MathUtils.lerp(0, chargeLeftArmRotY, w);
-    this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(idleLeftRotZ, 0.1, w);
+    this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(idleRightRotX, stage1ArmRotX, w) + this.rightHandTremble.x * 2.0;
+    this.rightArmPivot.rotation.y = THREE.MathUtils.lerp(0, -0.2, w);
+    this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(idleRightRotZ, stage1ArmRotZ, w);
 
-    this.rightArmPivot.rotation.x =
-      THREE.MathUtils.lerp(idleRightRotX, chargeArmRotX, w) + this.rightHandTremble.x * 2.0;
-    this.rightArmPivot.rotation.y = THREE.MathUtils.lerp(0, chargeRightArmRotY, w);
-    this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(idleRightRotZ, -0.1, w);
+    // Forearm bent 90 degrees pointing up with fingers up
+    this.leftForearmPivot.rotation.x = THREE.MathUtils.lerp(0, stage1ForearmX, w);
+    this.rightForearmPivot.rotation.x = THREE.MathUtils.lerp(0, stage1ForearmX, w);
 
-    // Forearm / Hand facing angles & tremor displacement
-    this.leftForearmPivot.rotation.x = THREE.MathUtils.lerp(0, -Math.PI * 0.15, w);
-    this.leftHand.position.x = this.leftHandTremble.x;
-    this.leftHand.position.y = -0.08 + this.leftHandTremble.y;
-    this.leftHand.position.z = this.leftHandTremble.z;
+    // Clench fists in Stage 2 (scale hand down slightly)
+    const fistScale = THREE.MathUtils.lerp(1.0, 0.75, w);
+    this.leftHand.scale.set(0.8 * fistScale, 1.1 * fistScale, 0.9 * fistScale);
+    this.rightHand.scale.set(0.8 * fistScale, 1.1 * fistScale, 0.9 * fistScale);
 
-    this.rightForearmPivot.rotation.x = THREE.MathUtils.lerp(0, -Math.PI * 0.15, w);
-    this.rightHand.position.x = this.rightHandTremble.x;
-    this.rightHand.position.y = -0.08 + this.rightHandTremble.y;
-    this.rightHand.position.z = this.rightHandTremble.z;
+    this.leftHand.position.set(this.leftHandTremble.x, -0.08 + this.leftHandTremble.y, this.leftHandTremble.z);
+    this.rightHand.position.set(this.rightHandTremble.x, -0.08 + this.rightHandTremble.y, this.rightHandTremble.z);
 
-    // Lean torso forward slightly while charging
-    this.torso.rotation.x = THREE.MathUtils.lerp(0, 0.12, w);
+    this.torso.rotation.x = THREE.MathUtils.lerp(0, -0.08, w); // Lean back slightly while gathering power
   }
 
   _updateBlastGesture(delta) {
@@ -879,22 +860,31 @@ export class WindChild {
     this.blastTimer += delta;
     const progress = Math.min(1.0, this.blastTimer / this.blastDuration);
 
-    // Arm push gesture curve (fast explosive forward thrust, then ease back)
-    let blastArmX = -Math.PI * 0.45;
-    if (progress < 0.3) {
-      // Explosive push
-      const pushFactor = progress / 0.3;
-      blastArmX = THREE.MathUtils.lerp(-Math.PI * 0.45, -Math.PI * 0.65, pushFactor);
-      this.torso.position.z = -pushFactor * 0.08; // Recoil backward
+    // Stage 3: Powerful forward arm thrust launching the wind blast!
+    let blastArmX = -Math.PI * 0.5; // Arms thrust straight forward
+    let blastForearmX = 0; // Forearms extended forward launching wind
+
+    if (progress < 0.25) {
+      // Explosive forward thrust
+      const pushFactor = progress / 0.25;
+      blastArmX = THREE.MathUtils.lerp(0, -Math.PI * 0.55, pushFactor);
+      blastForearmX = THREE.MathUtils.lerp(-Math.PI * 0.5, 0, pushFactor);
+      this.torso.position.z = -pushFactor * 0.12; // Dynamic recoil
     } else {
-      // Recovery
-      const recoverFactor = (progress - 0.3) / 0.7;
-      blastArmX = THREE.MathUtils.lerp(-Math.PI * 0.65, -Math.PI * 0.45, recoverFactor);
-      this.torso.position.z = THREE.MathUtils.lerp(-0.08, 0, recoverFactor);
+      // Recovery back to idle
+      const recoverFactor = (progress - 0.25) / 0.75;
+      blastArmX = THREE.MathUtils.lerp(-Math.PI * 0.55, 0, recoverFactor);
+      blastForearmX = THREE.MathUtils.lerp(0, 0, recoverFactor);
+      this.torso.position.z = THREE.MathUtils.lerp(-0.12, 0, recoverFactor);
     }
 
     this.leftArmPivot.rotation.x = blastArmX;
+    this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(-Math.PI * 0.45, 0, progress);
     this.rightArmPivot.rotation.x = blastArmX;
+    this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(Math.PI * 0.45, 0, progress);
+
+    this.leftForearmPivot.rotation.x = blastForearmX;
+    this.rightForearmPivot.rotation.x = blastForearmX;
 
     // Expand Blast Shockwave Ring & Sphere
     const pFactor = this._powerLevel / 10;
@@ -964,8 +954,12 @@ export class WindChild {
       if (child.geometry) child.geometry.dispose();
       if (child.material) {
         if (Array.isArray(child.material)) {
-          child.material.forEach((m) => m.dispose());
+          child.material.forEach((m) => {
+            if (m.map) m.map.dispose();
+            m.dispose();
+          });
         } else {
+          if (child.material.map) child.material.map.dispose();
           child.material.dispose();
         }
       }

@@ -52,6 +52,12 @@ export class InputManager {
       return;
     }
     switch (e.code) {
+      case 'KeyI':
+        if (this.onInventoryToggle) this.onInventoryToggle();
+        break;
+      case 'KeyF':
+        if (this.onFlashlightToggle) this.onFlashlightToggle();
+        break;
       case 'KeyW':
       case 'ArrowUp':
         this.keys.forward = true;

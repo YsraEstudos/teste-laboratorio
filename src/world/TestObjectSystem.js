@@ -1,4 +1,5 @@
 // @ts-check
+import * as THREE from 'three';
 
 /**
  * Owns the runtime integration of objects in the Confirmed 42 test room.
@@ -34,24 +35,61 @@ export class TestObjectSystem {
   /**
    * @param {number} delta
    * @param {{applyToObjects?: (objects: Array<Record<string, any>>, delta: number) => void}|null} windSystem
+   * @param {any} sandSystem
    */
-  update(delta, windSystem = null) {
+  update(delta, windSystem = null, sandSystem = null) {
     if (this.disposed) return;
     if (windSystem?.applyToObjects) windSystem.applyToObjects(this.objects, delta);
 
     // Physics Update for paper sheets, leaves, cardboard boxes and rocks.
     for (const obj of this.objects) {
-      if (obj.velocity.lengthSq() <= 0.001) continue;
+      if (!obj || !obj.mesh || !obj.mesh.position) continue;
+      if (!obj.velocity) obj.velocity = new THREE.Vector3();
 
-      obj.mesh.position.x += obj.velocity.x * delta;
-      obj.mesh.position.z += obj.velocity.z * delta;
+      obj.mesh.position.x += (obj.velocity.x || 0) * delta;
+      obj.mesh.position.z += (obj.velocity.z || 0) * delta;
 
-      if (obj.velocity.y) {
+      // Phase 6: Física de Drag & Depth Sinking
+      let groundY = 0.04;
+      let depthSink = 0.0;
+      let isHeavy = false;
+
+      if (sandSystem) {
+        groundY = sandSystem.getElevationAt(obj.mesh.position.x, obj.mesh.position.z);
+        
+        if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
+          // Objetos leves ficam nivelados na elevação exata da duna + 0.01
+          groundY += 0.01;
+        } else if (obj.type === 'caixa' || obj.type === 'papelao') {
+          // Caixas afundam em -0.06m
+          depthSink = 0.06;
+          groundY -= depthSink;
+          isHeavy = true;
+        } else if (obj.type === 'pedra') {
+          // Pedras de 25kg afundam em -0.15m
+          depthSink = 0.15;
+          groundY -= depthSink;
+          isHeavy = true;
+        }
+      }
+
+      const horizontalSpeedSq = (obj.velocity.x * obj.velocity.x) + (obj.velocity.z * obj.velocity.z);
+
+      if (obj.mesh.position.y > groundY + 0.001) {
         obj.mesh.position.y += obj.velocity.y * delta;
         obj.velocity.y -= delta * 6.5;
-        if (obj.mesh.position.y < 0.04) {
-          obj.mesh.position.y = 0.04;
+        if (obj.mesh.position.y <= groundY) {
+          obj.mesh.position.y = groundY;
           obj.velocity.y = 0;
+          if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
+            sandSystem.addFootprint(obj.mesh.position.x, obj.mesh.position.z, 0.4, depthSink);
+          }
+        }
+      } else {
+        obj.mesh.position.y = groundY;
+        obj.velocity.y = 0;
+        if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
+          sandSystem.addFootprint(obj.mesh.position.x, obj.mesh.position.z, 0.4, depthSink);
         }
       }
 
@@ -66,7 +104,12 @@ export class TestObjectSystem {
         obj.mesh.rotation.x += obj.velocity.z * delta * 1.2;
       }
 
-      obj.velocity.multiplyScalar(Math.exp(-3.8 * delta));
+      // Drag extra na areia para objetos pesados
+      const friction = isHeavy ? 6.0 : 3.8;
+      obj.velocity.multiplyScalar(Math.exp(-friction * delta));
+      if (obj.velocity.lengthSq() < 0.01) {
+        obj.velocity.set(0, 0, 0);
+      }
 
       // Keep the existing boundary response, including the light-object wall lift.
       if (obj.mesh.position.x < this.bounds.minX) {
@@ -82,7 +125,7 @@ export class TestObjectSystem {
         obj.mesh.position.z = this.bounds.minZ;
         obj.velocity.z *= -0.4;
         this._applyWallLift(obj);
-      } else if (obj.mesh.position.z > this.bounds.maxZ && Math.abs(obj.mesh.position.x) > 2.8) {
+      } else if (obj.mesh.position.z > this.bounds.maxZ) {
         obj.mesh.position.z = this.bounds.maxZ;
         obj.velocity.z *= -0.4;
       }
@@ -93,7 +136,7 @@ export class TestObjectSystem {
   _applyWallLift(object) {
     if (object.type !== 'folha_papel' && object.type !== 'folha_arvore') return;
     if (!object.velocity.y) object.velocity.y = 0;
-    object.velocity.y += 3.8;
+    if (object.velocity.y < 2.0) object.velocity.y += 1.5;
   }
 
   dispose() {
