@@ -150,4 +150,30 @@ describe('NavigationGrid dynamic obstacles', () => {
       new THREE.Vector3(4.5, 0, 1.5),
     ]);
   });
+
+  it.each(['static', 'dynamic'])('does not scan every %s collider for every expanded A* edge', (source) => {
+    const colliders = Array.from({ length: 100 }, (_, index) => {
+      const x = (index % 20) + 0.1;
+      const z = Math.floor(index / 20) + 0.1;
+      return new THREE.Box3(new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.1, 2, z + 0.1));
+    });
+    const grid = createGrid(source === 'static' ? colliders : [], { maxX: 30, maxZ: 30 });
+    const originalCheck = grid._segmentCoordinatesIntersectCollider.bind(grid);
+    let colliderChecks = 0;
+    grid._segmentCoordinatesIntersectCollider = (...args) => {
+      colliderChecks += 1;
+      return originalCheck(...args);
+    };
+
+    const result = grid.findPath(
+      0.5,
+      29.5,
+      29.5,
+      29.5,
+      source === 'dynamic' ? { dynamicColliders: colliders } : undefined,
+    );
+
+    expect(result.status).toBe('complete');
+    expect(colliderChecks).toBeLessThan(1000);
+  });
 });

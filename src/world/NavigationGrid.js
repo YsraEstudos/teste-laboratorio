@@ -10,14 +10,32 @@ export class NavigationGrid {
     this.cols = Math.ceil((this.maxX - this.minX) / this.cellSize);
     this.rows = Math.ceil((this.maxZ - this.minZ) / this.cellSize);
     const total = this.cols * this.rows;
+    this._directions = [
+      [-1, 0, 1],
+      [1, 0, 1],
+      [0, -1, 1],
+      [0, 1, 1],
+      [-1, -1, Math.SQRT2],
+      [1, -1, Math.SQRT2],
+      [-1, 1, Math.SQRT2],
+      [1, 1, Math.SQRT2],
+    ];
     this.blocked = new Uint8Array(total);
     this._dynamicBlocked = new Uint8Array(total);
+    this._staticEdgeBlocked = new Uint8Array(total);
+    this._dynamicColliderBuckets = Array.from({ length: total }, () => []);
+    this._dynamicBucketIndices = [];
     this._costs = new Float32Array(total);
     this._previous = new Int32Array(total);
     this._closed = new Uint8Array(total);
     this._heap = [];
-    this._staticColliders = colliders.filter((collider) => this._isRelevantCollider(collider));
-    this._build(colliders);
+    this._staticColliders = colliders.filter(
+      (collider) => this._isRelevantCollider(collider) && this._colliderIntersectsGrid(collider),
+    );
+    this._build(this._staticColliders);
+    for (const collider of this._staticColliders) {
+      this._indexStaticColliderEdges(collider);
+    }
   }
 
   _index(x, z) {
@@ -30,6 +48,42 @@ export class NavigationGrid {
 
   _isRelevantCollider(collider) {
     return Boolean(collider?.min && collider?.max && collider.max.y > 0.02 && collider.min.y <= 2.1);
+  }
+
+  _colliderIntersectsGrid(collider) {
+    const padding = 0.38;
+    return (
+      collider.max.x + padding >= this.minX &&
+      collider.min.x - padding <= this.maxX &&
+      collider.max.z + padding >= this.minZ &&
+      collider.min.z - padding <= this.maxZ
+    );
+  }
+
+  _colliderCellBounds(collider, margin = 0) {
+    const padding = 0.38;
+    return {
+      minX: THREE.MathUtils.clamp(
+        Math.floor((collider.min.x - padding - this.minX) / this.cellSize) - margin,
+        0,
+        this.cols - 1,
+      ),
+      maxX: THREE.MathUtils.clamp(
+        Math.floor((collider.max.x + padding - this.minX) / this.cellSize) + margin,
+        0,
+        this.cols - 1,
+      ),
+      minZ: THREE.MathUtils.clamp(
+        Math.floor((collider.min.z - padding - this.minZ) / this.cellSize) - margin,
+        0,
+        this.rows - 1,
+      ),
+      maxZ: THREE.MathUtils.clamp(
+        Math.floor((collider.max.z + padding - this.minZ) / this.cellSize) + margin,
+        0,
+        this.rows - 1,
+      ),
+    };
   }
 
   _build(colliders) {
@@ -56,15 +110,21 @@ export class NavigationGrid {
 
   _indexDynamicColliders(colliders) {
     this._dynamicBlocked.fill(0);
+    for (const index of this._dynamicBucketIndices) {
+      this._dynamicColliderBuckets[index].length = 0;
+    }
+    this._dynamicBucketIndices.length = 0;
     const padding = 0.38;
 
     for (const collider of colliders) {
-      if (!this._isRelevantCollider(collider)) continue;
-      const minCell = this.worldToCell(collider.min.x - padding, collider.min.z - padding);
-      const maxCell = this.worldToCell(collider.max.x + padding, collider.max.z + padding);
+      const bounds = this._colliderCellBounds(collider, 1);
+      for (let z = bounds.minZ; z <= bounds.maxZ; z += 1) {
+        for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+          const index = this._index(x, z);
+          const bucket = this._dynamicColliderBuckets[index];
+          if (bucket.length === 0) this._dynamicBucketIndices.push(index);
+          bucket.push(collider);
 
-      for (let z = minCell.z; z <= maxCell.z; z += 1) {
-        for (let x = minCell.x; x <= maxCell.x; x += 1) {
           const worldX = this.minX + (x + 0.5) * this.cellSize;
           const worldZ = this.minZ + (z + 0.5) * this.cellSize;
           if (
@@ -73,13 +133,35 @@ export class NavigationGrid {
             worldZ >= collider.min.z - padding &&
             worldZ <= collider.max.z + padding
           ) {
-            this._dynamicBlocked[this._index(x, z)] = 1;
+            this._dynamicBlocked[index] = 1;
           }
         }
       }
     }
 
     return this._dynamicBlocked;
+  }
+
+  _indexStaticColliderEdges(collider) {
+    const bounds = this._colliderCellBounds(collider, 1);
+    for (let z = bounds.minZ; z <= bounds.maxZ; z += 1) {
+      for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
+        const index = this._index(x, z);
+        for (let directionIndex = 0; directionIndex < this._directions.length; directionIndex += 1) {
+          const [dx, dz] = this._directions[directionIndex];
+          const nextX = x + dx;
+          const nextZ = z + dz;
+          if (!this._inside(nextX, nextZ)) continue;
+          const worldStartX = this.minX + (x + 0.5) * this.cellSize;
+          const worldStartZ = this.minZ + (z + 0.5) * this.cellSize;
+          const worldEndX = this.minX + (nextX + 0.5) * this.cellSize;
+          const worldEndZ = this.minZ + (nextZ + 0.5) * this.cellSize;
+          if (this._segmentCoordinatesIntersectCollider(worldStartX, worldStartZ, worldEndX, worldEndZ, collider)) {
+            this._staticEdgeBlocked[index] |= 1 << directionIndex;
+          }
+        }
+      }
+    }
   }
 
   worldToCell(x, z) {
@@ -221,12 +303,12 @@ export class NavigationGrid {
     return !colliders.some((collider) => this._segmentIntersectsCollider(start, end, collider));
   }
 
-  _cellEdgeIsClear(startX, startZ, endX, endZ, colliders) {
+  _dynamicEdgeIsBlocked(startX, startZ, endX, endZ, startIndex) {
     const worldStartX = this.minX + (startX + 0.5) * this.cellSize;
     const worldStartZ = this.minZ + (startZ + 0.5) * this.cellSize;
     const worldEndX = this.minX + (endX + 0.5) * this.cellSize;
     const worldEndZ = this.minZ + (endZ + 0.5) * this.cellSize;
-    return !colliders.some((collider) =>
+    return this._dynamicColliderBuckets[startIndex].some((collider) =>
       this._segmentCoordinatesIntersectCollider(worldStartX, worldStartZ, worldEndX, worldEndZ, collider),
     );
   }
@@ -271,9 +353,12 @@ export class NavigationGrid {
     }
 
     const requestedTarget = new THREE.Vector3(targetX, 0, targetZ);
-    const validDynamicColliders = Array.isArray(dynamicColliders) ? dynamicColliders : [];
+    const validDynamicColliders = Array.isArray(dynamicColliders)
+      ? dynamicColliders.filter(
+          (collider) => this._isRelevantCollider(collider) && this._colliderIntersectsGrid(collider),
+        )
+      : [];
     const dynamicBlocked = this._indexDynamicColliders(validDynamicColliders);
-    const activeColliders = this._staticColliders.concat(validDynamicColliders);
     const requestedStartCell = this.worldToCell(startX, startZ);
     const requestedTargetCell = this.worldToCell(targetX, targetZ);
     const start = this._nearestWalkable(requestedStartCell, dynamicBlocked);
@@ -342,16 +427,6 @@ export class NavigationGrid {
       score: this._heuristic(start.x, start.z, target.x, target.z),
     });
 
-    const directions = [
-      [-1, 0, 1],
-      [1, 0, 1],
-      [0, -1, 1],
-      [0, 1, 1],
-      [-1, -1, Math.SQRT2],
-      [1, -1, Math.SQRT2],
-      [-1, 1, Math.SQRT2],
-      [1, 1, Math.SQRT2],
-    ];
     let found = false;
     let closestIndex = startIndex;
     let closestDist = this._heuristic(start.x, start.z, target.x, target.z);
@@ -374,7 +449,8 @@ export class NavigationGrid {
         break;
       }
 
-      for (const [dx, dz, moveCost] of directions) {
+      for (let directionIndex = 0; directionIndex < this._directions.length; directionIndex += 1) {
+        const [dx, dz, moveCost] = this._directions[directionIndex];
         const nx = current.x + dx;
         const nz = current.z + dz;
         if (!this.isWalkable(nx, nz, dynamicBlocked)) continue;
@@ -385,7 +461,8 @@ export class NavigationGrid {
             !this.isWalkable(current.x, current.z + dz, dynamicBlocked))
         )
           continue;
-        if (!this._cellEdgeIsClear(current.x, current.z, nx, nz, activeColliders)) continue;
+        if ((this._staticEdgeBlocked[current.index] & (1 << directionIndex)) !== 0) continue;
+        if (this._dynamicEdgeIsBlocked(current.x, current.z, nx, nz, current.index)) continue;
         const neighborIndex = this._index(nx, nz);
         if (closed[neighborIndex]) continue;
         const nextCost = costs[current.index] + moveCost;
@@ -410,7 +487,7 @@ export class NavigationGrid {
     }
 
     const cellWaypoints = cells.map((cell) => this.cellToWorld(cell.x, cell.z));
-    const smoothed = this.smoothPath(cellWaypoints, activeColliders);
+    const smoothed = this.smoothPath(cellWaypoints, this._staticColliders.concat(validDynamicColliders));
     const waypoints = smoothed.slice(1);
 
     return this._result({
