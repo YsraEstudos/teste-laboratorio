@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-07-30T14:57:18.555Z",
+  "durationMs": 1000,
+  "browser": "Chromium 151.0.7922.34",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "dpr": 1,
+  "renderer": "WebKit WebGL",
+  "webgl": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+  "quality": "high",
+  "sand": {
+    "quality": "high",
+    "vertices": 16641,
+    "triangles": 32768,
+    "textureResolution": 512,
+    "deformationBytes": 1048576,
+    "footprintCount": 1,
+    "lastUploadAt": 236214.59999999963
+  },
+  "isPlaying": true,
+  "samples": {
+    "entrance": {
+      "frameTimeP50": 427.80000000074506,
+      "frameTimeP95": 447.80000000074506,
+      "frameTimeP99": 474.2999999988824,
+      "drawCalls": 337,
+      "triangles": 23620,
+      "textures": 13,
+      "geometries": 237,
+      "contextLost": false
+    },
+    "approach": {
+      "frameTimeP50": 659.7999999988824,
+      "frameTimeP95": 686,
+      "frameTimeP99": 1069,
+      "drawCalls": 309,
+      "triangles": 52846,
+      "textures": 21,
+      "geometries": 292,
+      "contextLost": false
+    },
+    "near": {
+      "frameTimeP50": 758,
+      "frameTimeP95": 829,
+      "frameTimeP99": 853.8000000007451,
+      "drawCalls": 312,
+      "triangles": 52946,
+      "textures": 21,
+      "geometries": 292,
+      "contextLost": false
+    }
+  }
+}

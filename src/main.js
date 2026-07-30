@@ -20,6 +20,7 @@ import { gameStore } from './state/gameStore.js';
 import { VFXManager } from './effects/VFXManager.js';
 import { SandVFXSystem } from './effects/SandVFXSystem.js';
 import { GroundDustSystem } from './effects/GroundDustSystem.js';
+import { collectSandSample } from './engine/PerformanceStats.js';
 
 export class Game {
   static CONSTANTS = {
@@ -42,6 +43,13 @@ export class Game {
 
     // World & Navigation
     this.lab = new LaboratoryBuilder(this.renderer.scene);
+    if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+      window.__LAB_DEBUG__ = {
+        game: this,
+        renderer: this.renderer,
+        sand: this.lab.sandTerrainSystem,
+      };
+    }
     this.navigation = new NavigationGrid(this.lab.colliders);
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
@@ -203,6 +211,10 @@ export class Game {
     this.hud.showPause();
   }
 
+  collectSandSample({ frames } = {}) {
+    return collectSandSample({ game: this, frames });
+  }
+
   /**
    * Enters targeting mode for Wind Blast
    */
@@ -346,6 +358,9 @@ export class Game {
     if (this.destroyed) return;
     this.destroyed = true;
     this.isPlaying = false;
+    if ((import.meta.env.DEV || import.meta.env.MODE === 'e2e') && window.__LAB_DEBUG__?.game === this) {
+      delete window.__LAB_DEBUG__;
+    }
 
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);

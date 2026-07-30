@@ -11,6 +11,9 @@ export class SandTerrainSystem {
    */
   constructor(scene) {
     this.scene = scene;
+    this.quality = 'high';
+    this.footprintCount = 0;
+    this.lastUploadAt = null;
     
     // Phase 1: Base terrain mesh
     this.geometry = new THREE.PlaneGeometry(24, 18, 128, 128);
@@ -258,6 +261,8 @@ export class SandTerrainSystem {
     this.depthCtx.fill();
     
     if (this.depthTexture) this.depthTexture.needsUpdate = true;
+    this.footprintCount += 1;
+    this.lastUploadAt = performance.now();
   }
 
   /**
@@ -277,7 +282,20 @@ export class SandTerrainSystem {
       this.depthCtx.fillStyle = `rgba(0, 0, 0, ${0.02 * delta})`;
       this.depthCtx.fillRect(0, 0, 512, 512);
       if (this.depthTexture) this.depthTexture.needsUpdate = true;
+      this.lastUploadAt = performance.now();
     }
+  }
+
+  getDebugStats() {
+    return {
+      quality: this.quality,
+      vertices: this.geometry.attributes.position.count,
+      triangles: this.geometry.index ? this.geometry.index.count / 3 : this.geometry.attributes.position.count / 3,
+      textureResolution: this.depthCanvas.width,
+      deformationBytes: this.depthCanvas.width * this.depthCanvas.height * 4,
+      footprintCount: this.footprintCount,
+      lastUploadAt: this.lastUploadAt,
+    };
   }
 
   /**
