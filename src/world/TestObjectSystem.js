@@ -20,6 +20,8 @@ export class TestObjectSystem {
       minZ: bounds.minZ ?? -63.2,
       maxZ: bounds.maxZ ?? -46.5,
     };
+    this.sandTime = 0;
+    this.lastFootprints = new Map();
     this.disposed = false;
   }
 
@@ -39,6 +41,7 @@ export class TestObjectSystem {
    */
   update(delta, windSystem = null, sandSystem = null) {
     if (this.disposed) return;
+    this.sandTime += delta;
     if (windSystem?.applyToObjects) windSystem.applyToObjects(this.objects, delta);
 
     // Physics Update for paper sheets, leaves, cardboard boxes and rocks.
@@ -56,6 +59,7 @@ export class TestObjectSystem {
 
       if (sandSystem) {
         groundY = sandSystem.getElevationAt(obj.mesh.position.x, obj.mesh.position.z);
+        groundY -= sandSystem.sampleWorld?.(obj.mesh.position.x, obj.mesh.position.z)?.depth ?? 0;
         
         if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
           // Objetos leves ficam nivelados na elevação exata da duna + 0.01
@@ -82,14 +86,14 @@ export class TestObjectSystem {
           obj.mesh.position.y = groundY;
           obj.velocity.y = 0;
           if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
-            sandSystem.addFootprint(obj.mesh.position.x, obj.mesh.position.z, 0.4, depthSink);
+            this._stampHeavyObject(obj, sandSystem, depthSink);
           }
         }
       } else {
         obj.mesh.position.y = groundY;
         obj.velocity.y = 0;
         if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
-          sandSystem.addFootprint(obj.mesh.position.x, obj.mesh.position.z, 0.4, depthSink);
+          this._stampHeavyObject(obj, sandSystem, depthSink);
         }
       }
 
@@ -137,6 +141,21 @@ export class TestObjectSystem {
     if (object.type !== 'folha_papel' && object.type !== 'folha_arvore') return;
     if (!object.velocity.y) object.velocity.y = 0;
     if (object.velocity.y < 2.0) object.velocity.y += 1.5;
+  }
+
+  _stampHeavyObject(object, sandSystem, depthSink) {
+    const previous = this.lastFootprints.get(object);
+    const distance = previous
+      ? Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z)
+      : 0;
+    if (distance < 0.35 && this.sandTime - (previous?.time ?? 0) < 0.12) return;
+    const brush = sandSystem.brush ?? sandSystem.addFootprint;
+    brush?.call(sandSystem, object.mesh.position.x, object.mesh.position.z, 0.4, depthSink, depthSink * 0.25, 0.75);
+    this.lastFootprints.set(object, {
+      x: object.mesh.position.x,
+      z: object.mesh.position.z,
+      time: this.sandTime,
+    });
   }
 
   dispose() {

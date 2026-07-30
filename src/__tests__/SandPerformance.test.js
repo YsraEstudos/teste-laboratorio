@@ -16,7 +16,7 @@ describe('sand performance baseline', () => {
     const stats = new SandTerrainSystem(new THREE.Scene()).getDebugStats();
 
     expect(stats.triangles).toBe(32768);
-    expect(stats.deformationBytes).toBe(512 * 512 * 4);
+    expect(stats.deformationBytes).toBe(256 * 256);
   });
 
   it('rejeita a coleta sem uma instância de jogo em execução', async () => {

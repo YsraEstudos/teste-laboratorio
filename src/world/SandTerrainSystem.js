@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from './TextureGenerator.js';
+import { SandDeformationField } from './SandDeformationField.js';
 
 /**
  * Sand Terrain System
@@ -19,31 +20,16 @@ export class SandTerrainSystem {
     this.geometry = new THREE.PlaneGeometry(24, 18, 128, 128);
     this.geometry.rotateX(-Math.PI / 2);
     
-    // Phase 5: Canvas de profundidade (Deformation Map)
-    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-      this.depthCanvas = document.createElement('canvas');
-      this.depthCanvas.width = 512;
-      this.depthCanvas.height = 512;
-      const ctx = this.depthCanvas.getContext('2d');
-      if (ctx) {
-        this.depthCtx = ctx;
-        this.depthCtx.fillStyle = 'black';
-        this.depthCtx.fillRect(0, 0, 512, 512);
-      }
-    }
-
-    if (!this.depthCanvas) {
-      this.depthCanvas = { width: 512, height: 512 };
-      this.depthCtx = null;
-    }
-    
-    if (this.depthCtx) {
-      this.depthTexture = new THREE.CanvasTexture(this.depthCanvas);
-      this.depthTexture.minFilter = THREE.LinearFilter;
-      this.depthTexture.generateMipmaps = false;
-    } else {
-      this.depthTexture = null;
-    }
+    // Compact persistent field: no Canvas2D radial gradients or full canvas uploads.
+    this.deformationField = new SandDeformationField({
+      minX: -12,
+      maxX: 12,
+      minZ: -64,
+      maxZ: -46,
+      maxDepth: 0.2,
+      decayPerSecond: 0.1,
+    });
+    this.depthTexture = this.deformationField.texture;
 
     // Phase 4: Uniforms for Custom Shader GLSL
     this.customUniforms = {
@@ -51,6 +37,7 @@ export class SandTerrainSystem {
       uSparkleIntensity: { value: 1.2 },
       uSparkleScale: { value: 90.0 },
       uDeformationMap: { value: this.depthTexture },
+      uDeformationScale: { value: this.deformationField.maxDepth },
       uTerrainBounds: { value: new THREE.Vector4(-12, 12, -64, -46) } // minX, maxX, minZ, maxZ
     };
     
@@ -77,10 +64,12 @@ export class SandTerrainSystem {
       shader.uniforms.uSparkleIntensity = this.customUniforms.uSparkleIntensity;
       shader.uniforms.uSparkleScale = this.customUniforms.uSparkleScale;
       shader.uniforms.uDeformationMap = this.customUniforms.uDeformationMap;
+      shader.uniforms.uDeformationScale = this.customUniforms.uDeformationScale;
       shader.uniforms.uTerrainBounds = this.customUniforms.uTerrainBounds;
 
       shader.vertexShader = `
         uniform sampler2D uDeformationMap;
+        uniform float uDeformationScale;
         uniform vec4 uTerrainBounds;
         varying vec2 vWorldUv;
         varying vec3 vWorldPos;
@@ -101,7 +90,7 @@ export class SandTerrainSystem {
         
         // Phase 5: Aplicar deslocamento vertical Y da areia
         float depth = texture2D(uDeformationMap, vWorldUv).r;
-        transformed.y -= depth * 1.0; // depth multiplier
+        transformed.y -= depth * uDeformationScale;
         `
       );
 
@@ -230,36 +219,20 @@ export class SandTerrainSystem {
    * @param {number} depth 
    */
   addFootprint(x, z, radius, depth = 0.12) {
-    if (!this.depthCtx) return;
+    return this.brush(x, z, radius, depth, depth * 0.25, 0.7);
+  }
 
-    // Convert world x,z to canvas coordinates
-    const minX = -12, maxX = 12, minZ = -64, maxZ = -46;
-    
-    if (x < minX || x > maxX || z < minZ || z > maxZ) return;
+  brush(x, z, radius, depth, berm = 0, compression = 0, yaw = 0, elongation = 1, edge = 0) {
+    const stamped = this.deformationField.brush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
+    if (stamped) {
+      this.footprintCount += 1;
+      this.lastUploadAt = typeof performance !== 'undefined' ? performance.now() : 0;
+    }
+    return stamped;
+  }
 
-    const u = (x - minX) / (maxX - minX);
-    const v = (z - minZ) / (maxZ - minZ);
-    
-    const cx = u * 512;
-    const cy = v * 512;
-    
-    const cRadius = (radius / (maxX - minX)) * 512;
-    
-    const grad = this.depthCtx.createRadialGradient(cx, cy, 0, cx, cy, cRadius);
-    // Add depth to the red channel (black is 0 depth, red is depth amount)
-    const colorDepth = Math.min(255, Math.floor(depth * 255));
-    grad.addColorStop(0, `rgba(${colorDepth}, 0, 0, 1.0)`);
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
-    
-    this.depthCtx.globalCompositeOperation = 'lighten'; // Keep max depth
-    this.depthCtx.fillStyle = grad;
-    this.depthCtx.beginPath();
-    this.depthCtx.arc(cx, cy, cRadius, 0, Math.PI * 2);
-    this.depthCtx.fill();
-    
-    if (this.depthTexture) this.depthTexture.needsUpdate = true;
-    this.footprintCount += 1;
-    this.lastUploadAt = performance.now();
+  sampleWorld(x, z) {
+    return this.deformationField.sampleWorld(x, z);
   }
 
   /**
@@ -272,14 +245,9 @@ export class SandTerrainSystem {
       this.customUniforms.uTime.value = time;
     }
     
-    // Phase 5: Recuperação gradual (smooth decay) pelo vento
-    if (this.depthCtx && Math.random() < 0.1) { 
-      // Do it occasionally to save performance or multiply by small delta
-      this.depthCtx.globalCompositeOperation = 'source-over';
-      this.depthCtx.fillStyle = `rgba(0, 0, 0, ${0.02 * delta})`;
-      this.depthCtx.fillRect(0, 0, 512, 512);
-      if (this.depthTexture) this.depthTexture.needsUpdate = true;
-      this.lastUploadAt = performance.now();
+    this.deformationField.advance(delta);
+    if (this.deformationField.consumeDirty()) {
+      this.lastUploadAt = typeof performance !== 'undefined' ? performance.now() : 0;
     }
   }
 
@@ -288,8 +256,8 @@ export class SandTerrainSystem {
       quality: this.quality,
       vertices: this.geometry.attributes.position.count,
       triangles: this.geometry.index ? this.geometry.index.count / 3 : this.geometry.attributes.position.count / 3,
-      textureResolution: this.depthCanvas.width,
-      deformationBytes: this.depthCanvas.width * this.depthCanvas.height * 4,
+      textureResolution: this.deformationField.resolution,
+      deformationBytes: this.deformationField.data.byteLength,
       footprintCount: this.footprintCount,
       lastUploadAt: this.lastUploadAt,
     };
@@ -310,9 +278,7 @@ export class SandTerrainSystem {
       this.scene.remove(this.mesh);
       this.geometry.dispose();
       this.material.dispose();
-      if (this.depthTexture) {
-        this.depthTexture.dispose();
-      }
+      this.deformationField?.dispose();
       this.textureSet?.release?.();
       this.textureSet = null;
       this.mesh = null;
