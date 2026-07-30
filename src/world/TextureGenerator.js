@@ -10,12 +10,6 @@ export class TextureGenerator {
       if (typeof texture.dispose === 'function') texture.dispose();
     }
     this._cache.clear();
-    for (const textureSet of this._sandTextureSets.values()) {
-      textureSet.albedo.dispose();
-      textureSet.normal.dispose();
-      textureSet.roughness.dispose();
-    }
-    this._sandTextureSets.clear();
   }
 
   static _texture(width, height, draw, colorSpace = true) {

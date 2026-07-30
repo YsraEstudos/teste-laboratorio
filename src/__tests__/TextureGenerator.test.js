@@ -83,4 +83,19 @@ describe('TextureGenerator.acquireSandTextureSet', () => {
     expect(disposeNormal).toHaveBeenCalledOnce();
     expect(disposeRoughness).toHaveBeenCalledOnce();
   });
+
+  it('keeps referenced sand maps alive when clearing the regular texture cache', () => {
+    const first = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const disposeAlbedo = vi.spyOn(first.albedo, 'dispose');
+
+    TextureGenerator.clearCache();
+
+    expect(disposeAlbedo).not.toHaveBeenCalled();
+    const second = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    expect(second.albedo).toBe(first.albedo);
+
+    first.release();
+    second.release();
+    expect(disposeAlbedo).toHaveBeenCalledOnce();
+  });
 });
