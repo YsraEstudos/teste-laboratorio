@@ -15,7 +15,7 @@ describe('sand performance baseline', () => {
   it('relata o orçamento atual da areia', () => {
     const stats = new SandTerrainSystem(new THREE.Scene()).getDebugStats();
 
-    expect(stats.triangles).toBe(32768);
+    expect(stats.triangles).toBe(8192);
     expect(stats.deformationBytes).toBe(256 * 256);
   });
 

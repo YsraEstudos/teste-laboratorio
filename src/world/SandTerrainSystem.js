@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TextureGenerator } from './TextureGenerator.js';
 import { SandDeformationField } from './SandDeformationField.js';
+import { getSandQuality } from './SandQualityProfile.js';
 
 /**
  * Sand Terrain System
@@ -13,11 +14,12 @@ export class SandTerrainSystem {
   constructor(scene, { quality = 'high', textureSet = null, renderer = null } = {}) {
     this.scene = scene;
     this.quality = quality;
+    this.profile = getSandQuality(quality);
     this.footprintCount = 0;
     this.lastUploadAt = null;
     
     // Phase 1: Base terrain mesh
-    this.geometry = new THREE.PlaneGeometry(24, 18, 128, 128);
+    this.geometry = new THREE.PlaneGeometry(24, 18, this.profile.segments, this.profile.segments);
     this.geometry.rotateX(-Math.PI / 2);
     
     // Compact persistent field: no Canvas2D radial gradients or full canvas uploads.
@@ -35,9 +37,6 @@ export class SandTerrainSystem {
 
     // Phase 4: Uniforms for Custom Shader GLSL
     this.customUniforms = {
-      uTime: { value: 0 },
-      uSparkleIntensity: { value: 1.2 },
-      uSparkleScale: { value: 90.0 },
       uDeformationMap: { value: this.depthTexture },
       uDeformationScale: { value: this.deformationField.maxDepth },
       uTerrainBounds: { value: new THREE.Vector4(-12, 12, -64, -46) } // minX, maxX, minZ, maxZ
@@ -62,9 +61,6 @@ export class SandTerrainSystem {
 
     // Injeção de GLSL (Fase 4 e Fase 5)
     this.material.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = this.customUniforms.uTime;
-      shader.uniforms.uSparkleIntensity = this.customUniforms.uSparkleIntensity;
-      shader.uniforms.uSparkleScale = this.customUniforms.uSparkleScale;
       shader.uniforms.uDeformationMap = this.customUniforms.uDeformationMap;
       shader.uniforms.uDeformationScale = this.customUniforms.uDeformationScale;
       shader.uniforms.uTerrainBounds = this.customUniforms.uTerrainBounds;
@@ -97,50 +93,23 @@ export class SandTerrainSystem {
       );
 
       shader.fragmentShader = `
-        uniform float uTime;
-        uniform float uSparkleIntensity;
-        uniform float uSparkleScale;
         uniform sampler2D uDeformationMap;
         varying vec2 vWorldUv;
-        varying vec3 vWorldPos;
-
-        // Simple 3D noise for sparkles
-        float hash31(vec3 p3) {
-          p3  = fract(p3 * .1031);
-          p3 += dot(p3, p3.yzx + 33.33);
-          return fract((p3.x + p3.y) * p3.z);
-        }
       ` + shader.fragmentShader;
 
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <dithering_fragment>',
         `
-        #include <dithering_fragment>
-        
-        // Phase 4: Micro-Brilhos (Sparkles) baseados no vetor de visão
-        vec3 viewDir = normalize(cameraPosition - vWorldPos);
-        
-        // Brilho dependente do movimento da câmera (cintilação)
-        float sparkleNoise = hash31(floor(vWorldPos * uSparkleScale) + floor(viewDir * 12.0));
-        float isSparkle = step(0.992, sparkleNoise); // Apenas alguns grãos brilham
-        
-        // Reluzir elegantemente com base no ângulo de visão
-        float viewFactor = dot(viewDir, vec3(0.0, 1.0, 0.0));
-        float sparkleAmount = isSparkle * uSparkleIntensity * pow(max(0.0, viewFactor), 2.0);
-        
         float printDepth = texture2D(uDeformationMap, vWorldUv).r;
-        if (printDepth > 0.01) {
-          gl_FragColor.rgb *= (1.0 - printDepth * 0.45);
-          sparkleAmount *= 0.1; // Reduz os micro-brilhos no rastro
-        }
-
-        // Adição sutil e quente de brilho
-        gl_FragColor.rgb += vec3(1.0, 0.9, 0.7) * sparkleAmount;
+        if (printDepth > 0.01) gl_FragColor.rgb *= (1.0 - printDepth * 0.32);
+        #include <dithering_fragment>
         `
       );
     };
     
     this.mesh = new THREE.Mesh(this.geometry, this.material);
+    this.mesh.castShadow = false;
+    this.mesh.receiveShadow = this.profile.receiveShadow;
     // Positioned as requested
     this.mesh.position.set(0, 0, -55);
     
@@ -244,7 +213,7 @@ export class SandTerrainSystem {
    */
   update(delta, time) {
     if (this.customUniforms) {
-      this.customUniforms.uTime.value = time;
+      void time;
     }
     
     this.deformationField.advance(delta);
@@ -260,6 +229,7 @@ export class SandTerrainSystem {
       triangles: this.geometry.index ? this.geometry.index.count / 3 : this.geometry.attributes.position.count / 3,
       textureResolution: this.deformationField.resolution,
       deformationBytes: this.deformationField.data.byteLength,
+      shaderFeatures: ['deformation', 'pbr-normal', 'pbr-roughness'],
       footprintCount: this.footprintCount,
       lastUploadAt: this.lastUploadAt,
     };

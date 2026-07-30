@@ -603,7 +603,7 @@ export class TextureGenerator {
       }
 
       // Gerador de Normal Map de alta frequência para microrrugosidade tridimensional com distribuição gaussiana
-      for (let i = 0; i < 40000; i++) {
+      for (let i = 0; i < 4096; i++) {
         const x = Math.random() * width;
         const y = Math.random() * height;
         
@@ -631,7 +631,7 @@ export class TextureGenerator {
       ctx.fillRect(0, 0, width, height);
       
       // Oclusão e variação fina de especularidade com poeira
-      this._noise(ctx, width, height, 8000, ['#ffffff', '#cccccc', '#e6e6e6', '#b3b3b3'], 0.15);
+      this._noise(ctx, width, height, 2048, ['#ffffff', '#cccccc', '#e6e6e6', '#b3b3b3'], 0.15);
     }, false);
 
     for (const texture of [albedo, normal, roughness]) texture.anisotropy = anisotropy;
