@@ -1,13 +1,21 @@
 import * as THREE from 'three';
+import { getSandQuality } from './SandQualityProfile.js';
 
 export class TextureGenerator {
   static _cache = new Map();
+  static _sandTextureSets = new Map();
 
   static clearCache() {
     for (const texture of this._cache.values()) {
       if (typeof texture.dispose === 'function') texture.dispose();
     }
     this._cache.clear();
+    for (const textureSet of this._sandTextureSets.values()) {
+      textureSet.albedo.dispose();
+      textureSet.normal.dispose();
+      textureSet.roughness.dispose();
+    }
+    this._sandTextureSets.clear();
   }
 
   static _texture(width, height, draw, colorSpace = true) {
@@ -34,6 +42,30 @@ export class TextureGenerator {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.anisotropy = 4;
+    if (colorSpace) texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  static _sandTexture(width, height, draw, colorSpace = true) {
+    let canvas = null;
+    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      try {
+        canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (context) draw(context, width, height);
+      } catch {
+        canvas = null;
+      }
+    }
+    if (!canvas) canvas = { width, height };
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
     if (colorSpace) texture.colorSpace = THREE.SRGBColorSpace;
     texture.needsUpdate = true;
     return texture;
@@ -535,9 +567,17 @@ export class TextureGenerator {
   /**
    * @returns {THREE.CanvasTexture}
    */
-  static createAdvancedSandAlbedoMap() {
-    if (this._cache.has('createAdvancedSandAlbedoMap')) return this._cache.get('createAdvancedSandAlbedoMap');
-    const texture = this._texture(512, 512, (ctx, width, height) => {
+  static acquireSandTextureSet({ quality = 'high' } = {}) {
+    const profile = getSandQuality(quality);
+    const key = quality in { low: true, medium: true, high: true } ? quality : 'high';
+    const cached = this._sandTextureSets.get(key);
+    if (cached) {
+      cached.refs += 1;
+      return this._sandTextureSetHandle(key, cached);
+    }
+
+    const { mapResolution, anisotropy } = profile;
+    const albedo = this._sandTexture(mapResolution, mapResolution, (ctx, width, height) => {
       // Gradiente tricolor PBR rico (areia dourada exposta, areia seca de crista e fundo de vale)
       const gradient = ctx.createLinearGradient(0, 0, width, height);
       gradient.addColorStop(0, '#e0ba7d'); // exposed golden sand
@@ -550,16 +590,7 @@ export class TextureGenerator {
       // Fundo de vale com micro-grãos de contraste suave
       this._noise(ctx, width, height, 4000, ['#ffffff', '#f4d6a6', '#9c733a', '#745121', '#e8cd9c'], 0.15);
     });
-    this._cache.set('createAdvancedSandAlbedoMap', texture);
-    return texture;
-  }
-
-  /**
-   * @returns {THREE.CanvasTexture}
-   */
-  static createAdvancedSandNormalMap() {
-    if (this._cache.has('createAdvancedSandNormalMap')) return this._cache.get('createAdvancedSandNormalMap');
-    const texture = this._texture(1024, 1024, (ctx, width, height) => {
+    const normal = this._sandTexture(mapResolution, mapResolution, (ctx, width, height) => {
       // Base normal (flat pointing UP in tangent space: R=128, G=128, B=255)
       ctx.fillStyle = '#8080ff';
       ctx.fillRect(0, 0, width, height);
@@ -595,17 +626,8 @@ export class TextureGenerator {
         const size = Math.random() * 2.0 + 0.5;
         ctx.fillRect(x, y, size, size);
       }
-    }, false); // PBR data maps should not be in SRGB
-    this._cache.set('createAdvancedSandNormalMap', texture);
-    return texture;
-  }
-
-  /**
-   * @returns {THREE.CanvasTexture}
-   */
-  static createAdvancedSandRoughnessMap() {
-    if (this._cache.has('createAdvancedSandRoughnessMap')) return this._cache.get('createAdvancedSandRoughnessMap');
-    const texture = this._texture(512, 512, (ctx, width, height) => {
+    }, false);
+    const roughness = this._sandTexture(mapResolution, mapResolution, (ctx, width, height) => {
       // Mapa de rugosidade com variação de especularidade e oclusão (0.70 a 0.95)
       const gradient = ctx.createLinearGradient(0, 0, width, height);
       gradient.addColorStop(0, '#b2b2b2'); // Crests: ~0.70 roughness
@@ -617,7 +639,30 @@ export class TextureGenerator {
       // Oclusão e variação fina de especularidade com poeira
       this._noise(ctx, width, height, 8000, ['#ffffff', '#cccccc', '#e6e6e6', '#b3b3b3'], 0.15);
     }, false);
-    this._cache.set('createAdvancedSandRoughnessMap', texture);
-    return texture;
+
+    for (const texture of [albedo, normal, roughness]) texture.anisotropy = anisotropy;
+    const textureSet = { refs: 1, albedo, normal, roughness };
+    this._sandTextureSets.set(key, textureSet);
+    return this._sandTextureSetHandle(key, textureSet);
+  }
+
+  static _sandTextureSetHandle(key, textureSet) {
+    let released = false;
+    return {
+      key,
+      albedo: textureSet.albedo,
+      normal: textureSet.normal,
+      roughness: textureSet.roughness,
+      release: () => {
+        if (released) return;
+        released = true;
+        textureSet.refs -= 1;
+        if (textureSet.refs > 0) return;
+        textureSet.albedo.dispose();
+        textureSet.normal.dispose();
+        textureSet.roughness.dispose();
+        this._sandTextureSets.delete(key);
+      },
+    };
   }
 }

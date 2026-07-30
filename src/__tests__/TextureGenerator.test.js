@@ -62,3 +62,25 @@ describe('TextureGenerator.createSignageTexture', () => {
     expect(disposeExit).toHaveBeenCalledOnce();
   });
 });
+
+describe('TextureGenerator.acquireSandTextureSet', () => {
+  it('shares maps and disposes them after the last consumer releases', () => {
+    const first = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const second = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const disposeAlbedo = vi.spyOn(first.albedo, 'dispose');
+    const disposeNormal = vi.spyOn(first.normal, 'dispose');
+    const disposeRoughness = vi.spyOn(first.roughness, 'dispose');
+
+    expect(second.albedo).toBe(first.albedo);
+    expect(second.normal).toBe(first.normal);
+    expect(second.roughness).toBe(first.roughness);
+
+    first.release();
+    expect(disposeAlbedo).not.toHaveBeenCalled();
+
+    second.release();
+    expect(disposeAlbedo).toHaveBeenCalledOnce();
+    expect(disposeNormal).toHaveBeenCalledOnce();
+    expect(disposeRoughness).toHaveBeenCalledOnce();
+  });
+});

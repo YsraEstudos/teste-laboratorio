@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from './TextureGenerator.js';
+import { getSandQuality } from './SandQualityProfile.js';
 
 /**
  * Sand Terrain System
@@ -9,31 +10,32 @@ export class SandTerrainSystem {
   /**
    * @param {THREE.Scene} scene
    */
-  constructor(scene) {
+  constructor(scene, { quality = 'high', textureSet = null } = {}) {
     this.scene = scene;
-    this.quality = 'high';
+    this.quality = quality;
+    this.qualityProfile = getSandQuality(quality);
     this.footprintCount = 0;
     this.lastUploadAt = null;
     
     // Phase 1: Base terrain mesh
-    this.geometry = new THREE.PlaneGeometry(24, 18, 128, 128);
+    this.geometry = new THREE.PlaneGeometry(24, 18, this.qualityProfile.segments, this.qualityProfile.segments);
     this.geometry.rotateX(-Math.PI / 2);
     
     // Phase 5: Canvas de profundidade (Deformation Map)
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
       this.depthCanvas = document.createElement('canvas');
-      this.depthCanvas.width = 512;
-      this.depthCanvas.height = 512;
+      this.depthCanvas.width = this.qualityProfile.deformationResolution;
+      this.depthCanvas.height = this.qualityProfile.deformationResolution;
       const ctx = this.depthCanvas.getContext('2d');
       if (ctx) {
         this.depthCtx = ctx;
         this.depthCtx.fillStyle = 'black';
-        this.depthCtx.fillRect(0, 0, 512, 512);
+        this.depthCtx.fillRect(0, 0, this.depthCanvas.width, this.depthCanvas.height);
       }
     }
 
     if (!this.depthCanvas) {
-      this.depthCanvas = { width: 512, height: 512 };
+      this.depthCanvas = { width: this.qualityProfile.deformationResolution, height: this.qualityProfile.deformationResolution };
       this.depthCtx = null;
     }
     
@@ -48,19 +50,16 @@ export class SandTerrainSystem {
     // Phase 4: Uniforms for Custom Shader GLSL
     this.customUniforms = {
       uTime: { value: 0 },
-      uSparkleIntensity: { value: 1.2 },
+      uSparkleIntensity: { value: this.qualityProfile.sparkles ? 1.2 : 0 },
       uSparkleScale: { value: 90.0 },
       uDeformationMap: { value: this.depthTexture },
       uTerrainBounds: { value: new THREE.Vector4(-12, 12, -64, -46) } // minX, maxX, minZ, maxZ
     };
     
-    const albedoMap = TextureGenerator.createAdvancedSandAlbedoMap().clone();
+    this.textureSet = textureSet || TextureGenerator.acquireSandTextureSet({ quality });
+    const { albedo: albedoMap, normal: normalMap, roughness: roughnessMap } = this.textureSet;
     albedoMap.repeat.set(8, 6);
-    
-    const normalMap = TextureGenerator.createAdvancedSandNormalMap().clone();
     normalMap.repeat.set(8, 6);
-    
-    const roughnessMap = TextureGenerator.createAdvancedSandRoughnessMap().clone();
     roughnessMap.repeat.set(8, 6);
 
     this.material = new THREE.MeshStandardMaterial({
@@ -153,6 +152,7 @@ export class SandTerrainSystem {
     };
     
     this.mesh = new THREE.Mesh(this.geometry, this.material);
+    this.mesh.receiveShadow = this.qualityProfile.receiveShadow;
     // Positioned as requested
     this.mesh.position.set(0, 0, -55);
     
@@ -243,10 +243,10 @@ export class SandTerrainSystem {
     const u = (x - minX) / (maxX - minX);
     const v = (z - minZ) / (maxZ - minZ);
     
-    const cx = u * 512;
-    const cy = v * 512;
+    const cx = u * this.depthCanvas.width;
+    const cy = v * this.depthCanvas.height;
     
-    const cRadius = (radius / (maxX - minX)) * 512;
+    const cRadius = (radius / (maxX - minX)) * this.depthCanvas.width;
     
     const grad = this.depthCtx.createRadialGradient(cx, cy, 0, cx, cy, cRadius);
     // Add depth to the red channel (black is 0 depth, red is depth amount)
@@ -280,7 +280,7 @@ export class SandTerrainSystem {
       // Do it occasionally to save performance or multiply by small delta
       this.depthCtx.globalCompositeOperation = 'source-over';
       this.depthCtx.fillStyle = `rgba(0, 0, 0, ${0.02 * delta})`;
-      this.depthCtx.fillRect(0, 0, 512, 512);
+      this.depthCtx.fillRect(0, 0, this.depthCanvas.width, this.depthCanvas.height);
       if (this.depthTexture) this.depthTexture.needsUpdate = true;
       this.lastUploadAt = performance.now();
     }
@@ -316,6 +316,8 @@ export class SandTerrainSystem {
       if (this.depthTexture) {
         this.depthTexture.dispose();
       }
+      this.textureSet?.release?.();
+      this.textureSet = null;
       this.mesh = null;
     }
   }

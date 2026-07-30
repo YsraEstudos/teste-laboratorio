@@ -95,22 +95,7 @@ export class LaboratoryBuilder {
     const metalTexture = TextureGenerator.createMetalTexture();
     const panelTexture = TextureGenerator.createEmissivePanelTexture();
     const waterTexture = TextureGenerator.createWaterTexture();
-    const sandTexture = TextureGenerator.createAdvancedSandAlbedoMap();
-    const sandNormal = TextureGenerator.createAdvancedSandNormalMap();
-    const sandRoughness = TextureGenerator.createAdvancedSandRoughnessMap();
-
     this.materials = {
-      sand: new THREE.MeshStandardMaterial({
-        map: this._cloneTexture(sandTexture, 6, 5),
-        normalMap: this._cloneTexture(sandNormal, 6, 5),
-        roughnessMap: this._cloneTexture(sandRoughness, 6, 5),
-        color: 0xdfb97a,
-        roughness: 0.88,
-        metalness: 0.05,
-        polygonOffset: true,
-        polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2,
-      }),
       floor: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(floorTexture, 7, 5),
         color: 0xb4c6cc,
