@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-30T14:57:18.555Z",
-  "durationMs": 1000,
+  "generatedAt": "2026-07-30T15:10:09.959Z",
+  "durationMs": 10000,
   "browser": "Chromium 151.0.7922.34",
   "viewport": {
     "width": 1280,
@@ -17,14 +17,14 @@
     "textureResolution": 512,
     "deformationBytes": 1048576,
     "footprintCount": 1,
-    "lastUploadAt": 236214.59999999963
+    "lastUploadAt": 226029.20000000112
   },
   "isPlaying": true,
   "samples": {
     "entrance": {
-      "frameTimeP50": 427.80000000074506,
-      "frameTimeP95": 447.80000000074506,
-      "frameTimeP99": 474.2999999988824,
+      "frameTimeP50": 431.5,
+      "frameTimeP95": 463.2999999988824,
+      "frameTimeP99": 489.59999999962747,
       "drawCalls": 337,
       "triangles": 23620,
       "textures": 13,
@@ -32,9 +32,9 @@
       "contextLost": false
     },
     "approach": {
-      "frameTimeP50": 659.7999999988824,
-      "frameTimeP95": 686,
-      "frameTimeP99": 1069,
+      "frameTimeP50": 656.5,
+      "frameTimeP95": 757.2000000011176,
+      "frameTimeP99": 1464.9000000003725,
       "drawCalls": 309,
       "triangles": 52846,
       "textures": 21,
@@ -42,9 +42,9 @@
       "contextLost": false
     },
     "near": {
-      "frameTimeP50": 758,
-      "frameTimeP95": 829,
-      "frameTimeP99": 853.8000000007451,
+      "frameTimeP50": 770.4000000003725,
+      "frameTimeP95": 806,
+      "frameTimeP99": 818.2000000011176,
       "drawCalls": 312,
       "triangles": 52946,
       "textures": 21,

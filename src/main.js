@@ -21,6 +21,12 @@ import { VFXManager } from './effects/VFXManager.js';
 import { SandVFXSystem } from './effects/SandVFXSystem.js';
 import { GroundDustSystem } from './effects/GroundDustSystem.js';
 import { collectSandSample } from './engine/PerformanceStats.js';
+import { isLabDebugEnabled } from './engine/LabDebug.js';
+
+const LAB_DEBUG_ENABLED = isLabDebugEnabled({
+  isDevelopmentOrTest: import.meta.env.DEV || import.meta.env.MODE === 'e2e',
+  optIn: import.meta.env.VITE_LAB_DEBUG === 'true',
+});
 
 export class Game {
   static CONSTANTS = {
@@ -43,7 +49,7 @@ export class Game {
 
     // World & Navigation
     this.lab = new LaboratoryBuilder(this.renderer.scene);
-    if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+    if (LAB_DEBUG_ENABLED) {
       window.__LAB_DEBUG__ = {
         game: this,
         renderer: this.renderer,
@@ -358,7 +364,7 @@ export class Game {
     if (this.destroyed) return;
     this.destroyed = true;
     this.isPlaying = false;
-    if ((import.meta.env.DEV || import.meta.env.MODE === 'e2e') && window.__LAB_DEBUG__?.game === this) {
+    if (LAB_DEBUG_ENABLED && window.__LAB_DEBUG__?.game === this) {
       delete window.__LAB_DEBUG__;
     }
 

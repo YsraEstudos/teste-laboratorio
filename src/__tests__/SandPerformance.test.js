@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { collectSandSample, percentile } from '../engine/PerformanceStats.js';
+import { isLabDebugEnabled } from '../engine/LabDebug.js';
 import { SandTerrainSystem } from '../world/SandTerrainSystem.js';
 
 describe('sand performance baseline', () => {
@@ -22,5 +23,11 @@ describe('sand performance baseline', () => {
     await expect(collectSandSample({ game: null })).rejects.toThrow(
       'collectSandSample requires a running Game',
     );
+  });
+
+  it('exige flag explícita para expor o hook de debug', () => {
+    expect(isLabDebugEnabled({ isDevelopmentOrTest: true, optIn: false })).toBe(false);
+    expect(isLabDebugEnabled({ isDevelopmentOrTest: false, optIn: true })).toBe(false);
+    expect(isLabDebugEnabled({ isDevelopmentOrTest: true, optIn: true })).toBe(true);
   });
 });
