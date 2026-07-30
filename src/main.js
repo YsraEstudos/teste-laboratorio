@@ -48,7 +48,7 @@ export class Game {
     this.profiler = new PerformanceProfiler(this);
 
     // World & Navigation
-    this.lab = new LaboratoryBuilder(this.renderer.scene);
+    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer);
     if (LAB_DEBUG_ENABLED) {
       window.__LAB_DEBUG__ = {
         game: this,

@@ -24,7 +24,7 @@ describe('SandDeformationSimulation', () => {
 
     expect(renderer.render).toHaveBeenCalledOnce();
     expect(simulation.publishedTarget).not.toBe(firstPublished);
-    expect(renderer.setRenderTarget).toHaveBeenCalledWith(firstPublished);
+    expect(renderer.setRenderTarget).toHaveBeenLastCalledWith(null);
   });
 
   it('descarta recursos auxiliares e targets uma única vez', () => {

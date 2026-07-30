@@ -30,16 +30,18 @@ export class SandDeformationField {
         this.data = new Uint8Array(resolution * resolution);
         this.bermData = new Uint8Array(resolution * resolution);
         this.compressionData = new Uint8Array(resolution * resolution);
-        this.texture = new THREE.DataTexture(this.data, resolution, resolution, THREE.RedFormat, THREE.UnsignedByteType);
-        this.texture.minFilter = THREE.LinearFilter;
-        this.texture.magFilter = THREE.LinearFilter;
-        this.texture.wrapS = THREE.ClampToEdgeWrapping;
-        this.texture.wrapT = THREE.ClampToEdgeWrapping;
-        this.texture.generateMipmaps = false;
-        this.texture.needsUpdate = true;
+        this.cpuTexture = new THREE.DataTexture(this.data, resolution, resolution, THREE.RedFormat, THREE.UnsignedByteType);
+        this.cpuTexture.minFilter = THREE.LinearFilter;
+        this.cpuTexture.magFilter = THREE.LinearFilter;
+        this.cpuTexture.wrapS = THREE.ClampToEdgeWrapping;
+        this.cpuTexture.wrapT = THREE.ClampToEdgeWrapping;
+        this.cpuTexture.generateMipmaps = false;
+        this.cpuTexture.needsUpdate = true;
+        this.texture = this.cpuTexture;
         this.backend = 'cpuR8';
         this.simulation = null;
-        if (renderer?.capabilities?.isWebGL2) {
+        const supportsFloatTargets = !renderer?.extensions || renderer.extensions.has('EXT_color_buffer_float');
+        if (renderer?.capabilities?.isWebGL2 && supportsFloatTargets) {
             this.backend = 'gpuPingPong';
             this.simulation = new SandDeformationSimulation({ renderer, scene, resolution });
             this.texture = this.simulation.publishedTarget.texture;
@@ -124,14 +126,14 @@ export class SandDeformationField {
             }
         }
         if (changed) this.dirty = true;
-        this.simulation?.update();
+        this.simulation?.update(elapsed);
         return changed;
     }
 
     consumeDirty() {
         if (!this.dirty) return false;
         this.dirty = false;
-        if (this.backend === 'cpuR8') this.texture.needsUpdate = true;
+        if (this.backend === 'cpuR8') this.cpuTexture.needsUpdate = true;
         return true;
     }
 
@@ -150,9 +152,10 @@ export class SandDeformationField {
         this.disposed = true;
         if (this.simulation) {
             this.texture.dispose();
+            this.cpuTexture.dispose();
             this.simulation.dispose();
         } else {
-            this.texture.dispose();
+            this.cpuTexture.dispose();
         }
     }
 }

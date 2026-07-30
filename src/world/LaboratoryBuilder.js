@@ -9,7 +9,7 @@ import { GPUComputeSandSystem } from './GPUComputeSandSystem.js';
 const MAX_REAL_AREA_LIGHTS = 8;
 
 export class LaboratoryBuilder {
-  constructor(scene) {
+  constructor(scene, renderer = null) {
     this.scene = scene;
     this.root = new THREE.Group();
     this.ownedGeometries = new Set();
@@ -28,7 +28,7 @@ export class LaboratoryBuilder {
     this.testObjectSystem = new TestObjectSystem();
     this.testObjects = this.testObjectSystem.objects;
     this.time = 0;
-    this.sandTerrainSystem = new SandTerrainSystem(this.root);
+    this.sandTerrainSystem = new SandTerrainSystem(this.root, { renderer });
     this.gpuSandSystem = new GPUComputeSandSystem(this.scene);
 
     this._boxBuffers = new Map();

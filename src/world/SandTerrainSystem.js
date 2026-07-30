@@ -10,7 +10,7 @@ export class SandTerrainSystem {
   /**
    * @param {THREE.Scene} scene
    */
-  constructor(scene, { quality = 'high', textureSet = null } = {}) {
+  constructor(scene, { quality = 'high', textureSet = null, renderer = null } = {}) {
     this.scene = scene;
     this.quality = quality;
     this.footprintCount = 0;
@@ -22,6 +22,8 @@ export class SandTerrainSystem {
     
     // Compact persistent field: no Canvas2D radial gradients or full canvas uploads.
     this.deformationField = new SandDeformationField({
+      renderer,
+      scene,
       minX: -12,
       maxX: 12,
       minZ: -64,
