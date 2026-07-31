@@ -15,6 +15,7 @@
     "vertices": 16641,
     "triangles": 32768,
     "textureResolution": 512,
+    "_textureResolutionNote": "Deformation field resolution (deformationField.resolution), not PBR mapResolution",
     "deformationBytes": 1048576,
     "footprintCount": 1,
     "lastUploadAt": 226029.20000000112

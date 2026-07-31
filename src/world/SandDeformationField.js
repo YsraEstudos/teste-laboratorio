@@ -43,7 +43,17 @@ export class SandDeformationField {
         const supportsFloatTargets = !renderer?.extensions || renderer.extensions.has('EXT_color_buffer_float');
         if (renderer?.capabilities?.isWebGL2 && supportsFloatTargets) {
             this.backend = 'gpuPingPong';
-            this.simulation = new SandDeformationSimulation({ renderer, scene, resolution });
+            this.simulation = new SandDeformationSimulation({
+                renderer,
+                scene,
+                resolution,
+                minX,
+                maxX,
+                minZ,
+                maxZ,
+                maxDepth,
+                decayPerSecond,
+            });
             this.texture = this.simulation.publishedTarget.texture;
         }
         this.dirty = false;
@@ -126,7 +136,10 @@ export class SandDeformationField {
             }
         }
         if (changed) this.dirty = true;
-        this.simulation?.update(elapsed);
+        if (this.simulation) {
+            this.simulation.update(elapsed);
+            this.texture = this.simulation.publishedTarget.texture;
+        }
         return changed;
     }
 
@@ -151,7 +164,6 @@ export class SandDeformationField {
         if (this.disposed) return;
         this.disposed = true;
         if (this.simulation) {
-            this.texture.dispose();
             this.cpuTexture.dispose();
             this.simulation.dispose();
         } else {

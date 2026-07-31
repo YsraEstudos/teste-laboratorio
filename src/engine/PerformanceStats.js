@@ -14,7 +14,8 @@ export function percentile(values, quantile) {
   }
 
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * quantile) - 1)];
+  const index = Math.max(0, Math.ceil(sorted.length * quantile) - 1);
+  return sorted[Math.min(sorted.length - 1, index)];
 }
 
 function waitForAnimationFrame() {

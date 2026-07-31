@@ -196,7 +196,7 @@ export class TextureGenerator {
    */
   static acquireSandTextureSet({ quality = 'high' } = {}) {
     const profile = getSandQuality(quality);
-    const key = quality in { low: true, medium: true, high: true } ? quality : 'high';
+    const key = ['low', 'medium', 'high'].includes(quality) ? quality : 'high';
     const cached = this._sandTextureSets.get(key);
     if (cached) {
       cached.refs += 1;

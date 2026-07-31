@@ -43,7 +43,10 @@ export class SandTerrainSystem {
     };
     
     this.textureSet = textureSet || TextureGenerator.acquireSandTextureSet({ quality });
-    const { albedo: albedoMap, normal: normalMap, roughness: roughnessMap } = this.textureSet;
+    const { albedo, normal, roughness } = this.textureSet;
+    const albedoMap = albedo.clone();
+    const normalMap = normal.clone();
+    const roughnessMap = roughness.clone();
     albedoMap.repeat.set(8, 6);
     normalMap.repeat.set(8, 6);
     roughnessMap.repeat.set(8, 6);
@@ -215,8 +218,9 @@ export class SandTerrainSystem {
     if (this.customUniforms) {
       void time;
     }
-    
+
     this.deformationField.advance(delta);
+    this.customUniforms.uDeformationMap.value = this.deformationField.texture;
     if (this.deformationField.consumeDirty()) {
       this.lastUploadAt = typeof performance !== 'undefined' ? performance.now() : 0;
     }
@@ -228,7 +232,7 @@ export class SandTerrainSystem {
       vertices: this.geometry.attributes.position.count,
       triangles: this.geometry.index ? this.geometry.index.count / 3 : this.geometry.attributes.position.count / 3,
       textureResolution: this.deformationField.resolution,
-      deformationBytes: this.deformationField.data.byteLength,
+      deformationBytes: this.deformationField.data.byteLength + this.deformationField.bermData.byteLength + this.deformationField.compressionData.byteLength,
       shaderFeatures: ['deformation', 'pbr-normal', 'pbr-roughness'],
       footprintCount: this.footprintCount,
       lastUploadAt: this.lastUploadAt,
@@ -249,6 +253,9 @@ export class SandTerrainSystem {
     if (this.mesh) {
       this.scene.remove(this.mesh);
       this.geometry.dispose();
+      if (this.material.map) this.material.map.dispose();
+      if (this.material.normalMap) this.material.normalMap.dispose();
+      if (this.material.roughnessMap) this.material.roughnessMap.dispose();
       this.material.dispose();
       this.deformationField?.dispose();
       this.textureSet?.release?.();

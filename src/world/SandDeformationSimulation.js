@@ -6,10 +6,26 @@ import * as THREE from 'three';
  * deliberately isolated so the renderer can consume the same brush stream.
  */
 export class SandDeformationSimulation {
-    constructor({ renderer, scene = new THREE.Scene(), resolution = 256 } = {}) {
+    constructor({
+        renderer,
+        scene = new THREE.Scene(),
+        resolution = 256,
+        minX = -12,
+        maxX = 12,
+        minZ = -64,
+        maxZ = -46,
+        maxDepth = 0.2,
+        decayPerSecond = 0.1,
+    } = {}) {
         this.renderer = renderer;
         this.scene = scene;
         this.resolution = resolution;
+        this.minX = minX;
+        this.maxX = maxX;
+        this.minZ = minZ;
+        this.maxZ = maxZ;
+        this.maxDepth = maxDepth;
+        this.decayPerSecond = decayPerSecond;
         this.writeIndex = 0;
         this.brushCount = 0;
         this.brushData = new Float32Array(96 * 2 * 4);
@@ -42,8 +58,8 @@ export class SandDeformationSimulation {
                 uBrushes: { value: this.brushTexture },
                 uBrushCount: { value: 0 },
                 uDecay: { value: 1 },
-                uBounds: { value: new THREE.Vector4(-12, 12, -64, -46) },
-                uMaxDepth: { value: 0.2 },
+                uBounds: { value: new THREE.Vector4(this.minX, this.maxX, this.minZ, this.maxZ) },
+                uMaxDepth: { value: this.maxDepth },
             },
             vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }',
             fragmentShader: `
@@ -93,9 +109,16 @@ export class SandDeformationSimulation {
         this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
         this.publishedTarget = this.renderTargets[0];
         const previousTarget = this.renderer?.getRenderTarget?.() ?? null;
-        for (const target of this.renderTargets) {
-            this.renderer?.setRenderTarget?.(target);
-            this.renderer?.clear?.(true, false, false);
+        if (this.renderer) {
+            const clearColor = new THREE.Color();
+            this.renderer.getClearColor(clearColor);
+            const clearAlpha = this.renderer.getClearAlpha();
+            this.renderer.setClearColor(0x000000, 0);
+            for (const target of this.renderTargets) {
+                this.renderer.setRenderTarget(target);
+                this.renderer.clear(true, false, false);
+            }
+            this.renderer.setClearColor(clearColor, clearAlpha);
         }
         this.renderer?.setRenderTarget?.(previousTarget);
         this.disposed = false;
@@ -126,7 +149,7 @@ export class SandDeformationSimulation {
         const previousTarget = this.renderer.getRenderTarget?.() ?? null;
         this.material.uniforms.uPrevious.value = readTarget.texture;
         this.material.uniforms.uBrushCount.value = this.brushCount;
-        this.material.uniforms.uDecay.value = Math.max(0, 1 - 0.1 * delta);
+        this.material.uniforms.uDecay.value = Math.max(0, 1 - this.decayPerSecond * delta);
         this.renderer.setRenderTarget(writeTarget);
         this.renderer.render(this.passScene, this.camera);
         this.renderer.setRenderTarget(previousTarget);

@@ -12,6 +12,9 @@ function optionValue(name, fallback) {
 async function collectAt(page, z) {
   return page.evaluate(async ({ z: targetZ, frames }) => {
     const game = window.__LAB_DEBUG__?.game;
+    if (!game) {
+      throw new Error('window.__LAB_DEBUG__.game is not available; ensure debug exposure is enabled');
+    }
     game.player.position.z = targetZ;
     if (game.player.model) game.player.model.position.z = targetZ;
     return game.collectSandSample({ frames });
@@ -20,6 +23,9 @@ async function collectAt(page, z) {
 
 async function writeBaseline() {
   const duration = Number(optionValue('--duration', '10000'));
+  if (!Number.isFinite(duration) || duration < 0) {
+    throw new Error(`--duration must be a finite, non-negative number; received: ${duration}`);
+  }
   const output = optionValue('--output', 'docs/sand-performance-before.json');
   let server;
   let browser;

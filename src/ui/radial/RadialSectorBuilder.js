@@ -95,7 +95,13 @@ export function createSectorNode(sector, index, totalCount, tokens = RADIAL_MENU
     g.addEventListener('mouseleave', () => handlers.onLeave(g));
   }
   if (handlers.onFocus) {
-    g.addEventListener('focus', () => handlers.onFocus(index));
+    g.addEventListener('focus', () => {
+      handlers.onFocus(index);
+      if (handlers.onHover) handlers.onHover(sector, g);
+    });
+  }
+  if (handlers.onLeave) {
+    g.addEventListener('blur', () => handlers.onLeave(g));
   }
   if (handlers.onClick) {
     g.addEventListener('click', (e) => {

@@ -13,10 +13,13 @@ describe('sand performance baseline', () => {
   });
 
   it('relata o orçamento atual da areia', () => {
-    const stats = new SandTerrainSystem(new THREE.Scene()).getDebugStats();
+    const terrain = new SandTerrainSystem(new THREE.Scene());
+    const stats = terrain.getDebugStats();
 
     expect(stats.triangles).toBe(8192);
-    expect(stats.deformationBytes).toBe(256 * 256);
+    expect(stats.deformationBytes).toBe(256 * 256 * 3);
+
+    terrain.dispose();
   });
 
   it('rejeita a coleta sem uma instância de jogo em execução', async () => {

@@ -15,8 +15,7 @@ function createWebGL2Renderer() {
 describe('SandDeformationField', () => {
   it('ignora fora dos limites e limita profundidade', () => {
     const field = new SandDeformationField({
-      width: 8,
-      height: 8,
+      resolution: 8,
       minX: -4,
       maxX: 4,
       minZ: -4,
@@ -32,8 +31,7 @@ describe('SandDeformationField', () => {
 
   it('coalesce stamps e decai no intervalo agendado', () => {
     const field = new SandDeformationField({
-      width: 8,
-      height: 8,
+      resolution: 8,
       minX: -4,
       maxX: 4,
       minZ: -4,
@@ -54,8 +52,7 @@ describe('SandDeformationField', () => {
 
   it('mantém depression, berm e compression no mesmo brush', () => {
     const field = new SandDeformationField({
-      width: 32,
-      height: 32,
+      resolution: 32,
       minX: -4,
       maxX: 4,
       minZ: -4,
@@ -71,7 +68,7 @@ describe('SandDeformationField', () => {
   });
 
   it('usa DataTexture R8 compacta no fallback CPU', () => {
-    const field = new SandDeformationField({ width: 8, height: 8 });
+    const field = new SandDeformationField({ resolution: 256 });
 
     expect(field.backend).toBe('cpuR8');
     expect(field.texture.image.width).toBe(256);
@@ -97,8 +94,7 @@ describe('SandDeformationField', () => {
 
   it('preserva o círculo em metros quando o raio não é alongado', () => {
     const field = new SandDeformationField({
-      width: 65,
-      height: 65,
+      resolution: 65,
       minX: -4,
       maxX: 4,
       minZ: -4,

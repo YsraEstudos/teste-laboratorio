@@ -145,10 +145,10 @@ export class TestObjectSystem {
 
   _stampHeavyObject(object, sandSystem, depthSink) {
     const previous = this.lastFootprints.get(object);
-    const distance = previous
-      ? Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z)
-      : 0;
-    if (distance < 0.35 && this.sandTime - (previous?.time ?? 0) < 0.12) return;
+    if (previous) {
+      const distance = Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z);
+      if (distance < 0.35 && this.sandTime - previous.time < 0.12) return;
+    }
     const brush = sandSystem.brush ?? sandSystem.addFootprint;
     brush?.call(sandSystem, object.mesh.position.x, object.mesh.position.z, 0.4, depthSink, depthSink * 0.25, 0.75);
     this.lastFootprints.set(object, {
@@ -161,6 +161,7 @@ export class TestObjectSystem {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.lastFootprints.clear();
     this.objects.length = 0;
   }
 }
