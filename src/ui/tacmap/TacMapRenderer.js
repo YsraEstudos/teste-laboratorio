@@ -125,11 +125,17 @@ export class TacMapRenderer {
       }
 
       // Room Title Font
-      const fontSize = isHovered ? 20 : 13;
-      ctx.font = `${isHovered ? '700' : '600'} ${fontSize}px Rajdhani, Arial, sans-serif`;
+      let fontSize = isHovered ? 20 : 13;
+      const fontStyle = isHovered ? '700' : '600';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = isHovered ? '#ffffff' : room.color || '#a9f0ff';
+      ctx.font = `${fontStyle} ${fontSize}px Rajdhani, Arial, sans-serif`;
+      const maxTitleWidth = Math.max(8, b.w - 4);
+      while (fontSize > 8 && ctx.measureText(room.name).width > maxTitleWidth) {
+        fontSize -= 1;
+        ctx.font = `${fontStyle} ${fontSize}px Rajdhani, Arial, sans-serif`;
+      }
 
       ctx.fillText(room.name, b.x + b.w / 2, b.y + b.h / 2);
     }

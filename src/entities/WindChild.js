@@ -835,7 +835,8 @@ export class WindChild {
     this.leftArmPivot.rotation.y = THREE.MathUtils.lerp(0, 0.2, w);
     this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(idleLeftRotZ, -stage1ArmRotZ, w);
 
-    this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(idleRightRotX, stage1ArmRotX, w) + this.rightHandTremble.x * 2.0;
+    this.rightArmPivot.rotation.x =
+      THREE.MathUtils.lerp(idleRightRotX, stage1ArmRotX, w) + this.rightHandTremble.x * 2.0;
     this.rightArmPivot.rotation.y = THREE.MathUtils.lerp(0, -0.2, w);
     this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(idleRightRotZ, stage1ArmRotZ, w);
 

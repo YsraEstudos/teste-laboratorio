@@ -22,7 +22,8 @@ export class ParticlePresetRegistry {
           this.pools.set(name, []);
 
           if (this.vfxManager) {
-            const multiplier = this.vfxManager.quality === 'low' ? 0.25 : this.vfxManager.quality === 'medium' ? 0.5 : 1.0;
+            const multiplier =
+              this.vfxManager.quality === 'low' ? 0.25 : this.vfxManager.quality === 'medium' ? 0.5 : 1.0;
             if (multiplier !== 1.0 && typeof this.vfxManager._scaleSystemEmission === 'function') {
               this.vfxManager._scaleSystemEmission(object, multiplier);
             }
@@ -41,7 +42,7 @@ export class ParticlePresetRegistry {
           this.templates.set(name, fallback);
           this.pools.set(name, []);
           resolve(fallback);
-        }
+        },
       );
     });
   }
@@ -50,12 +51,12 @@ export class ParticlePresetRegistry {
     object.traverse((child) => {
       if (child.type === 'ParticleEmitter' && child.system) {
         const sys = child.system;
-        
+
         // Phase 6: Soft Particles
         sys.softParticles = true;
         sys.softNearFade = 0;
         sys.softFarFade = 2; // fade over 2 units
-        
+
         // Phase 6: Lighting Reactivity Support
         if (sys.material) {
           sys.material.transparent = true;

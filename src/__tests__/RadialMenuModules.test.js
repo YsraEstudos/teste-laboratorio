@@ -35,7 +35,9 @@ function createMockElement(tagName) {
       attributes.set(key, String(val));
       if (key === 'class') {
         classList.clear();
-        String(val).split(' ').forEach((c) => c && classList.add(c));
+        String(val)
+          .split(' ')
+          .forEach((c) => c && classList.add(c));
       }
     },
     getAttribute(key) {
@@ -108,7 +110,14 @@ function mockDocument() {
 describe('RadialMenu Modular System', () => {
   beforeEach(() => {
     vi.stubGlobal('document', mockDocument());
-    vi.stubGlobal('Event', class Event { constructor(type) { this.type = type; } });
+    vi.stubGlobal(
+      'Event',
+      class Event {
+        constructor(type) {
+          this.type = type;
+        }
+      },
+    );
   });
 
   afterEach(() => {

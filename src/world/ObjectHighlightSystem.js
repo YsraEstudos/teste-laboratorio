@@ -14,7 +14,7 @@ export class ObjectHighlightSystem {
 
   /**
    * Highlights a target object (or mesh) for a specified duration in milliseconds.
-   * 
+   *
    * @param {Record<string, any>} targetObject The object record containing `.mesh` or direct THREE.Mesh.
    * @param {number} [durationMs=300] Highlight duration in milliseconds.
    * @param {number} [colorHex=0x00f3ff] Highlight emissive color (default cyan).
@@ -26,7 +26,7 @@ export class ObjectHighlightSystem {
     if (!mesh || !mesh.material) return;
 
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    
+
     // If already highlighted, refresh timer
     if (this.activeHighlights.has(mesh)) {
       const entry = this.activeHighlights.get(mesh);

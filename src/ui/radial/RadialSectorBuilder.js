@@ -215,7 +215,6 @@ export function buildRadialMenuDOM(sectors, menuInstance, tokens = RADIAL_MENU_T
   menuWrapper.appendChild(tooltipPanel);
 
   container.appendChild(menuWrapper);
-  document.body.appendChild(container);
 
   return {
     container,

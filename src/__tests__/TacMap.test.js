@@ -56,6 +56,7 @@ const context = {
   restore: vi.fn(),
   closePath: vi.fn(),
   fillText: vi.fn(),
+  measureText: vi.fn(() => ({ width: 0 })),
 };
 
 let windowTarget;

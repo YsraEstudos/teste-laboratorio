@@ -17,11 +17,11 @@ export class SandTerrainSystem {
     this.profile = getSandQuality(quality);
     this.footprintCount = 0;
     this.lastUploadAt = null;
-    
+
     // Phase 1: Base terrain mesh
     this.geometry = new THREE.PlaneGeometry(24, 18, this.profile.segments, this.profile.segments);
     this.geometry.rotateX(-Math.PI / 2);
-    
+
     // Compact persistent field: no Canvas2D radial gradients or full canvas uploads.
     this.deformationField = new SandDeformationField({
       renderer,
@@ -39,9 +39,9 @@ export class SandTerrainSystem {
     this.customUniforms = {
       uDeformationMap: { value: this.depthTexture },
       uDeformationScale: { value: this.deformationField.maxDepth },
-      uTerrainBounds: { value: new THREE.Vector4(-12, 12, -64, -46) } // minX, maxX, minZ, maxZ
+      uTerrainBounds: { value: new THREE.Vector4(-12, 12, -64, -46) }, // minX, maxX, minZ, maxZ
     };
-    
+
     this.textureSet = textureSet || TextureGenerator.acquireSandTextureSet({ quality });
     const { albedo: albedoMap, normal: normalMap, roughness: roughnessMap } = this.textureSet;
     albedoMap.repeat.set(8, 6);
@@ -56,7 +56,7 @@ export class SandTerrainSystem {
       color: 0xe0ba7d,
       roughness: 0.85,
       metalness: 0.04,
-      flatShading: false
+      flatShading: false,
     });
 
     // Injeção de GLSL (Fase 4 e Fase 5)
@@ -65,7 +65,8 @@ export class SandTerrainSystem {
       shader.uniforms.uDeformationScale = this.customUniforms.uDeformationScale;
       shader.uniforms.uTerrainBounds = this.customUniforms.uTerrainBounds;
 
-      shader.vertexShader = `
+      shader.vertexShader =
+        `
         uniform sampler2D uDeformationMap;
         uniform float uDeformationScale;
         uniform vec4 uTerrainBounds;
@@ -89,10 +90,11 @@ export class SandTerrainSystem {
         // Phase 5: Aplicar deslocamento vertical Y da areia
         float depth = texture2D(uDeformationMap, vWorldUv).r;
         transformed.y -= depth * uDeformationScale;
-        `
+        `,
       );
 
-      shader.fragmentShader = `
+      shader.fragmentShader =
+        `
         uniform sampler2D uDeformationMap;
         varying vec2 vWorldUv;
       ` + shader.fragmentShader;
@@ -103,19 +105,19 @@ export class SandTerrainSystem {
         float printDepth = texture2D(uDeformationMap, vWorldUv).r;
         if (printDepth > 0.01) gl_FragColor.rgb *= (1.0 - printDepth * 0.32);
         #include <dithering_fragment>
-        `
+        `,
       );
     };
-    
+
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.castShadow = false;
     this.mesh.receiveShadow = this.profile.receiveShadow;
     // Positioned as requested
     this.mesh.position.set(0, 0, -55);
-    
+
     // Phase 2: Procedural elevation algorithm
     this.applyProceduralElevation();
-    
+
     this.scene.add(this.mesh);
   }
 
@@ -127,14 +129,14 @@ export class SandTerrainSystem {
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const z = positions[i + 2];
-      
+
       const worldX = x + this.mesh.position.x;
       const worldZ = z + this.mesh.position.z;
-      
+
       // Update Y coordinate based on elevation
       positions[i + 1] = this.getElevationAt(worldX, worldZ);
     }
-    
+
     this.geometry.attributes.position.needsUpdate = true;
     this.computeVertexNormals();
   }
@@ -150,44 +152,44 @@ export class SandTerrainSystem {
     // Macro dunes: ondulações suaves e realistas para arena interna
     const diagDune1 = (x * 0.7 + z * 0.7) * 0.15;
     const diagDune2 = (x * -0.6 + z * 0.8) * 0.08;
-    
+
     let height = Math.sin(diagDune1) * 0.08;
     height += Math.cos(diagDune2) * 0.07;
-    
+
     // Micro cristas delicadas de areia (delicate wind ripples)
     const rippleFreq = 2.5;
     const ripplePhase = Math.sin(x * 0.3 + z * 0.4) * 1.5;
     const ripples = (1.0 - Math.abs(Math.sin((x * 0.8 + z * 0.6) * rippleFreq + ripplePhase))) * 0.025;
-    
+
     height += ripples;
-    
+
     // Phase 8: Blend de Transição de Borda (Edge Blending)
     let edgeBlend = 1.0;
-    
+
     // Transição suave em x = ±12
     const absX = Math.abs(x);
     if (absX > 10.0) {
       edgeBlend *= Math.max(0, 1.0 - (absX - 10.0) / 2.0);
     }
-    
+
     // Transição suave em z = -46 (porta) e z = -64 (fundo)
     if (z > -48.0) {
       edgeBlend *= Math.max(0, 1.0 - (z + 48.0) / 2.0);
     } else if (z < -62.0) {
       edgeBlend *= Math.max(0, 1.0 - (-62.0 - z) / 2.0);
     }
-    
+
     height *= edgeBlend;
-    
+
     return height;
   }
 
   /**
    * Phase 5: Stamps a footprint / depression on the sand.
-   * @param {number} x 
-   * @param {number} z 
-   * @param {number} radius 
-   * @param {number} depth 
+   * @param {number} x
+   * @param {number} z
+   * @param {number} radius
+   * @param {number} depth
    */
   addFootprint(x, z, radius, depth = 0.12) {
     return this.brush(x, z, radius, depth, depth * 0.25, 0.7);
@@ -208,14 +210,14 @@ export class SandTerrainSystem {
 
   /**
    * Updates the shader uniforms and gradual recovery of the sand
-   * @param {number} delta 
-   * @param {number} time 
+   * @param {number} delta
+   * @param {number} time
    */
   update(delta, time) {
     if (this.customUniforms) {
       void time;
     }
-    
+
     this.deformationField.advance(delta);
     if (this.deformationField.consumeDirty()) {
       this.lastUploadAt = typeof performance !== 'undefined' ? performance.now() : 0;

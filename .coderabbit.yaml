@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: 'pt-BR'
+early_access: false
+
+reviews:
+  profile: 'chill'
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  review_details: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - '!dist/**'
+    - '!node_modules/**'
+    - '!playwright-report/**'
+    - '!test-results/**'
+    - '!graphics-area-lights/dist/**'
+    - '!graphics-area-lights/node_modules/**'
+    - '!**/package-lock.json'
+  path_instructions:
+    - path: 'src/**'
+      instructions: |
+        - Prioritize real correctness, lifecycle, resource disposal, and runtime regressions over stylistic preferences.
+        - For Three.js and WebGL code, check object ownership, geometry/material/texture disposal, animation-loop work, allocations, and resize behavior.
+        - For performance changes, verify that the optimization preserves gameplay behavior, timing, input handling, rendering order, and quality-profile semantics.
+        - Flag speculative optimizations only when they introduce measurable complexity, stale state, or a likely correctness risk.
+    - path: 'src/__tests__/**'
+      instructions: |
+        - Check that tests assert observable behavior and remain deterministic across repeated runs.
+        - Look for missing edge cases around lifecycle cleanup, quality changes, boundaries, and disabled or fallback paths.
+        - Do not recommend tests that depend on real time, GPU availability, or external network access unless the test isolates those dependencies.
+    - path: 'e2e/**'
+      instructions: |
+        - Check for reliable synchronization, meaningful assertions, cleanup, and failures that would be actionable in CI.
+        - Avoid timing-only assertions and selectors that depend on incidental presentation details.
+    - path: '.github/workflows/**'
+      instructions: |
+        - Check permissions, secret handling, action versions, dependency installation, caching, and whether failures are surfaced clearly.
+        - Keep CI aligned with the commands documented in package.json and README.md.
+    - path: 'scripts/**'
+      instructions: |
+        - Check idempotency, bounded resource usage, clear failure handling, and compatibility with the project’s Windows and CI workflows.
+
+  tools:
+    eslint:
+      enabled: true
+    github-checks:
+      enabled: true
+    actionlint:
+      enabled: true
+    markdownlint:
+      enabled: true
+
+chat:
+  auto_reply: true

@@ -27,7 +27,8 @@ class GameStore {
           name: 'Lanterna Tática HD',
           type: 'Equipamento',
           icon: '🔦',
-          description: 'Lanterna de alta intensidade com iluminação de área, facho volumétrico e sombras PCFSoft em tempo real.',
+          description:
+            'Lanterna de alta intensidade com iluminação de área, facho volumétrico e sombras PCFSoft em tempo real.',
           equipped: true,
         },
       ],

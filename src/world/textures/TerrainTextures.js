@@ -72,15 +72,7 @@ export function createSandColorTexture(mapResolution) {
       ctx.fillRect(0, y, width, 2);
     }
 
-    _seededNoise(
-      ctx,
-      width,
-      height,
-      2048,
-      ['#ffffff', '#f4d6a6', '#9c733a', '#745121', '#e8cd9c'],
-      0.15,
-      0x5a11d,
-    );
+    _seededNoise(ctx, width, height, 2048, ['#ffffff', '#f4d6a6', '#9c733a', '#745121', '#e8cd9c'], 0.15, 0x5a11d);
   });
 }
 
@@ -180,14 +172,6 @@ export function createSandTexture() {
       ctx.stroke();
     }
 
-    _seededNoise(
-      ctx,
-      width,
-      height,
-      2048,
-      ['#ffffff', '#fff2d6', '#c49954', '#8a6224', '#f7e1b5'],
-      0.22,
-      0x51a9d,
-    );
+    _seededNoise(ctx, width, height, 2048, ['#ffffff', '#fff2d6', '#c49954', '#8a6224', '#f7e1b5'], 0.22, 0x51a9d);
   });
 }

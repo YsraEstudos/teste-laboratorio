@@ -157,8 +157,26 @@ export function HUD() {
             }}
           >
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,240,255,0.3)', paddingBottom: '12px' }}>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: '#00f0ff', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '1px solid rgba(0,240,255,0.3)',
+                paddingBottom: '12px',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  color: '#00f0ff',
+                  letterSpacing: '1px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
                 🎒 INVENTÁRIO TÁTICO DE EQUIPAMENTOS
               </div>
               <button
@@ -205,7 +223,9 @@ export function HUD() {
                     </div>
                     <div>
                       <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff' }}>{item.name}</div>
-                      <div style={{ fontSize: '13px', color: '#89cff0', marginTop: '2px', maxWidth: '280px' }}>{item.description}</div>
+                      <div style={{ fontSize: '13px', color: '#89cff0', marginTop: '2px', maxWidth: '280px' }}>
+                        {item.description}
+                      </div>
                     </div>
                   </div>
 
@@ -249,8 +269,18 @@ export function HUD() {
             </div>
 
             {/* Footer info */}
-            <div style={{ fontSize: '12px', color: '#76f5ff', textAlign: 'center', marginTop: '8px', borderTop: '1px dashed rgba(0,240,255,0.2)', paddingTop: '10px' }}>
-              💡 Pressione a tecla <strong style={{ color: '#fff' }}>[I]</strong> para fechar ou <strong style={{ color: '#fff' }}>[F]</strong> para alternar a lanterna a qualquer momento no jogo.
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#76f5ff',
+                textAlign: 'center',
+                marginTop: '8px',
+                borderTop: '1px dashed rgba(0,240,255,0.2)',
+                paddingTop: '10px',
+              }}
+            >
+              💡 Pressione a tecla <strong style={{ color: '#fff' }}>[I]</strong> para fechar ou{' '}
+              <strong style={{ color: '#fff' }}>[F]</strong> para alternar a lanterna a qualquer momento no jogo.
             </div>
           </div>
         </div>
@@ -276,16 +306,36 @@ export function HUD() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '13px', color: '#76f5ff', fontWeight: 600 }}>ENERGIA:</span>
-          <div style={{ width: '120px', height: '10px', backgroundColor: '#1a2b3c', borderRadius: '5px', overflow: 'hidden' }}>
-            <div style={{ width: `${energy}%`, height: '100%', backgroundColor: '#00f0ff', transition: 'width 0.3s' }} />
+          <div
+            style={{
+              width: '120px',
+              height: '10px',
+              backgroundColor: '#1a2b3c',
+              borderRadius: '5px',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{ width: `${energy}%`, height: '100%', backgroundColor: '#00f0ff', transition: 'width 0.3s' }}
+            />
           </div>
           <span style={{ fontSize: '13px', fontWeight: 700 }}>{energy}%</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '13px', color: '#ffb74d', fontWeight: 600 }}>FELICIDADE:</span>
-          <div style={{ width: '120px', height: '10px', backgroundColor: '#1a2b3c', borderRadius: '5px', overflow: 'hidden' }}>
-            <div style={{ width: `${happiness}%`, height: '100%', backgroundColor: '#ffb74d', transition: 'width 0.3s' }} />
+          <div
+            style={{
+              width: '120px',
+              height: '10px',
+              backgroundColor: '#1a2b3c',
+              borderRadius: '5px',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{ width: `${happiness}%`, height: '100%', backgroundColor: '#ffb74d', transition: 'width 0.3s' }}
+            />
           </div>
           <span style={{ fontSize: '13px', fontWeight: 700 }}>{happiness}%</span>
         </div>

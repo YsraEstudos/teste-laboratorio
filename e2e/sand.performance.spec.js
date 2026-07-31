@@ -4,12 +4,15 @@ const FRAMES = 120;
 const MAX_FRAME_TIME_P95 = 16.7;
 
 async function collectAt(page, z) {
-  return page.evaluate(async ({ targetZ, frames }) => {
-    const game = window.__LAB_DEBUG__?.game;
-    game.player.position.z = targetZ;
-    if (game.player.model) game.player.model.position.z = targetZ;
-    return game.collectSandSample({ frames });
-  }, { targetZ: z, frames: FRAMES });
+  return page.evaluate(
+    async ({ targetZ, frames }) => {
+      const game = window.__LAB_DEBUG__?.game;
+      game.player.position.z = targetZ;
+      if (game.player.model) game.player.model.position.z = targetZ;
+      return game.collectSandSample({ frames });
+    },
+    { targetZ: z, frames: FRAMES },
+  );
 }
 
 test('measures sand performance from the entrance through close inspection', async ({ page }) => {

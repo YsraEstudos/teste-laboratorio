@@ -33,6 +33,7 @@ export class RadialMenu {
     this.sectorElements = dom.sectorElements;
     this.powerSelector = dom.powerSelector;
     this.tooltipPanel = dom.tooltipPanel;
+    document.body.appendChild(this.container);
   }
 
   _bindEvents() {

@@ -11,12 +11,15 @@ function optionValue(name, fallback) {
 }
 
 async function collectAt(page, z) {
-  return page.evaluate(async ({ z: targetZ, frames }) => {
-    const game = window.__LAB_DEBUG__?.game;
-    game.player.position.z = targetZ;
-    if (game.player.model) game.player.model.position.z = targetZ;
-    return game.collectSandSample({ frames });
-  }, { z, frames: DEFAULT_FRAMES });
+  return page.evaluate(
+    async ({ z: targetZ, frames }) => {
+      const game = window.__LAB_DEBUG__?.game;
+      game.player.position.z = targetZ;
+      if (game.player.model) game.player.model.position.z = targetZ;
+      return game.collectSandSample({ frames });
+    },
+    { z, frames: DEFAULT_FRAMES },
+  );
 }
 
 async function writeBaseline() {
@@ -65,14 +68,12 @@ async function writeBaseline() {
       ...metadata,
       samples,
     };
-    await import('node:fs/promises').then(({ writeFile }) => writeFile(output, `${JSON.stringify(baseline, null, 2)}\n`));
+    await import('node:fs/promises').then(({ writeFile }) =>
+      writeFile(output, `${JSON.stringify(baseline, null, 2)}\n`),
+    );
     console.log(`Wrote ${output}`);
   } finally {
-    await Promise.allSettled([
-      page?.close(),
-      browser?.close(),
-      server?.close(),
-    ]);
+    await Promise.allSettled([page?.close(), browser?.close(), server?.close()]);
   }
 }
 

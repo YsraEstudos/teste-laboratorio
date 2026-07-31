@@ -18,7 +18,10 @@
   },
   "startColor": {
     "type": "Color",
-    "r": 1, "g": 1, "b": 1, "a": 1
+    "r": 1,
+    "g": 1,
+    "b": 1,
+    "a": 1
   },
   "startRotation": {
     "type": "ConstantValue",

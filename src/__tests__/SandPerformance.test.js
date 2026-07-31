@@ -13,16 +13,19 @@ describe('sand performance baseline', () => {
   });
 
   it('relata o orçamento atual da areia', () => {
-    const stats = new SandTerrainSystem(new THREE.Scene()).getDebugStats();
+    const terrain = new SandTerrainSystem(new THREE.Scene());
 
-    expect(stats.triangles).toBe(8192);
-    expect(stats.deformationBytes).toBe(256 * 256);
+    try {
+      const stats = terrain.getDebugStats();
+      expect(stats.triangles).toBe(8192);
+      expect(stats.deformationBytes).toBe(256 * 256);
+    } finally {
+      terrain.dispose();
+    }
   });
 
   it('rejeita a coleta sem uma instância de jogo em execução', async () => {
-    await expect(collectSandSample({ game: null })).rejects.toThrow(
-      'collectSandSample requires a running Game',
-    );
+    await expect(collectSandSample({ game: null })).rejects.toThrow('collectSandSample requires a running Game');
   });
 
   it('exige flag explícita para expor o hook de debug', () => {

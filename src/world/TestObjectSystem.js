@@ -60,7 +60,7 @@ export class TestObjectSystem {
       if (sandSystem) {
         groundY = sandSystem.getElevationAt(obj.mesh.position.x, obj.mesh.position.z);
         groundY -= sandSystem.sampleWorld?.(obj.mesh.position.x, obj.mesh.position.z)?.depth ?? 0;
-        
+
         if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
           // Objetos leves ficam nivelados na elevação exata da duna + 0.01
           groundY += 0.01;
@@ -77,7 +77,7 @@ export class TestObjectSystem {
         }
       }
 
-      const horizontalSpeedSq = (obj.velocity.x * obj.velocity.x) + (obj.velocity.z * obj.velocity.z);
+      const horizontalSpeedSq = obj.velocity.x * obj.velocity.x + obj.velocity.z * obj.velocity.z;
 
       if (obj.mesh.position.y > groundY + 0.001) {
         obj.mesh.position.y += obj.velocity.y * delta;
