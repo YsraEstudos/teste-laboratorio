@@ -147,9 +147,27 @@ export class SandVFXSystem {
     }
   }
 
-  _createFootstepItem() {
+  _createPooledItem({ config, behaviors, rotationX, failureMessage }) {
     try {
-      const system = new ParticleSystem({
+      const system = new ParticleSystem(config);
+      system.behaviors.push(...behaviors);
+
+      const emitter = new ParticleEmitter(system);
+      emitter.position.set(0, -100, -55);
+      if (rotationX !== undefined) emitter.rotation.x = rotationX;
+      this.scene.add(emitter);
+      this.vfxManager.batchRenderer.addSystem(system);
+      system.stop();
+      return { emitter, system, active: false, activeUntil: 0, sequence: 0 };
+    } catch (error) {
+      console.warn(failureMessage, error);
+      return null;
+    }
+  }
+
+  _createFootstepItem() {
+    return this._createPooledItem({
+      config: {
         duration: 0.2,
         looping: false,
         startLife: new IntervalValue(0.5, 0.9),
@@ -162,9 +180,8 @@ export class SandVFXSystem {
         material: this.sandMaterial,
         renderMode: RenderMode.BillBoard,
         renderOrder: 2,
-      });
-
-      system.behaviors.push(
+      },
+      behaviors: [
         new SizeOverLife(
           new PiecewiseBezier([
             [new ConstantValue(0.5), 0],
@@ -173,24 +190,15 @@ export class SandVFXSystem {
           ]),
         ),
         new ColorOverLife(new ColorRange(new Vector4(1.0, 0.9, 0.6, 0.9), new Vector4(0.8, 0.55, 0.25, 0.0))),
-      );
-
-      const emitter = new ParticleEmitter(system);
-      emitter.position.set(0, -100, -55);
-      emitter.rotation.x = -Math.PI / 2;
-      this.scene.add(emitter);
-      this.vfxManager.batchRenderer.addSystem(system);
-      system.stop();
-      return { emitter, system, active: false, activeUntil: 0, sequence: 0 };
-    } catch (error) {
-      console.warn('SandVFXSystem footstep pool initialization error:', error);
-      return null;
-    }
+      ],
+      rotationX: -Math.PI / 2,
+      failureMessage: 'SandVFXSystem footstep pool initialization error:',
+    });
   }
 
   _createBlastItem() {
-    try {
-      const system = new ParticleSystem({
+    return this._createPooledItem({
+      config: {
         duration: 0.5,
         looping: false,
         startLife: new IntervalValue(0.8, 1.8),
@@ -203,9 +211,8 @@ export class SandVFXSystem {
         material: this.sandMaterial,
         renderMode: RenderMode.BillBoard,
         renderOrder: 3,
-      });
-
-      system.behaviors.push(
+      },
+      behaviors: [
         new SizeOverLife(
           new PiecewiseBezier([
             [new ConstantValue(0.6), 0],
@@ -214,18 +221,9 @@ export class SandVFXSystem {
           ]),
         ),
         new ColorOverLife(new ColorRange(new Vector4(1.0, 0.95, 0.7, 1.0), new Vector4(0.75, 0.5, 0.2, 0.0))),
-      );
-
-      const emitter = new ParticleEmitter(system);
-      emitter.position.set(0, -100, -55);
-      this.scene.add(emitter);
-      this.vfxManager.batchRenderer.addSystem(system);
-      system.stop();
-      return { emitter, system, active: false, activeUntil: 0, sequence: 0 };
-    } catch (error) {
-      console.warn('SandVFXSystem blast pool initialization error:', error);
-      return null;
-    }
+      ],
+      failureMessage: 'SandVFXSystem blast pool initialization error:',
+    });
   }
 
   _acquire(pool) {
@@ -294,7 +292,7 @@ export class SandVFXSystem {
       this.droppedEffects += 1;
       return false;
     }
-    const emitted = this._activate(this.blastPool, x, z, Math.max(0.2, 0.08 + powerLevel * 0.02), 2.2);
+    const emitted = this._activate(this.blastPool, x, z, Math.max(0.05, 0.08 + powerLevel * 0.05), 2.2);
     if (emitted) this.triggeredBlasts += 1;
     return emitted;
   }
@@ -381,6 +379,11 @@ export class SandVFXSystem {
       if (item.emitter.parent) item.emitter.parent.remove(item.emitter);
       try {
         this.vfxManager?.batchRenderer?.deleteSystem(item.system);
+      } catch {
+        /* idempotent cleanup */
+      }
+      try {
+        item.system?.dispose();
       } catch {
         /* idempotent cleanup */
       }

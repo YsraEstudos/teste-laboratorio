@@ -1,6 +1,6 @@
 // @ts-check
 
-import { QUALITY_LEVELS, saveSettings } from '../config/GameSettings.js';
+import { QUALITY_LEVELS, SETTINGS_VERSION, loadSettings, saveSettings } from '../config/GameSettings.js';
 
 /**
  * Lightweight EventBus / Reactive Store connecting the 60FPS Three.js engine
@@ -8,6 +8,7 @@ import { QUALITY_LEVELS, saveSettings } from '../config/GameSettings.js';
  */
 class GameStore {
   constructor() {
+    const persisted = loadSettings();
     /** @type {Record<string, any>} */
     this.state = {
       happiness: 80,
@@ -24,8 +25,8 @@ class GameStore {
       isFlashlightEquipped: true,
       isFlashlightOn: false,
       settingsOpen: false,
-      quality: 'high',
-      showFps: true,
+      quality: persisted.quality,
+      showFps: persisted.showFps,
       settingsApplyMessage: '',
       items: [
         {
@@ -99,8 +100,11 @@ class GameStore {
    */
   setQuality(level) {
     if (!QUALITY_LEVELS.includes(level)) return;
-    saveSettings({ version: 1, quality: level, showFps: this.state.showFps });
-    this.setState({ quality: level, settingsApplyMessage: 'Aplicado na próxima abertura' });
+    const saved = saveSettings({ version: SETTINGS_VERSION, quality: level, showFps: this.state.showFps });
+    this.setState({
+      quality: level,
+      settingsApplyMessage: saved ? 'Aplicado na próxima abertura' : 'Falha ao salvar qualidade',
+    });
   }
 
   /**
@@ -110,8 +114,11 @@ class GameStore {
    */
   setShowFps(value) {
     if (typeof value !== 'boolean') return;
-    saveSettings({ version: 1, quality: this.state.quality, showFps: value });
-    this.setState({ showFps: value });
+    const saved = saveSettings({ version: SETTINGS_VERSION, quality: this.state.quality, showFps: value });
+    this.setState({
+      showFps: value,
+      ...(saved ? {} : { settingsApplyMessage: 'Falha ao salvar preferência' }),
+    });
   }
 }
 

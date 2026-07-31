@@ -85,13 +85,17 @@ export class LaboratoryBuilder {
       minStepDistance: 0.2,
       leftOffset: (out) => {
         const anchor = this._actors?.player?.leftFootAnchor;
-        out.x = anchor?.x ?? 0;
-        out.z = anchor?.z ?? 0;
+        if (anchor) {
+          out.x = anchor.x;
+          out.z = anchor.z;
+        }
       },
       rightOffset: (out) => {
         const anchor = this._actors?.player?.rightFootAnchor;
-        out.x = anchor?.x ?? 0;
-        out.z = anchor?.z ?? 0;
+        if (anchor) {
+          out.x = anchor.x;
+          out.z = anchor.z;
+        }
       },
     });
     this.sandFootstepSystem.registerActor('wind-child', {
@@ -99,8 +103,20 @@ export class LaboratoryBuilder {
       width: 0.1,
       length: 0.16,
       minStepDistance: 0.5,
-      leftOffset: { x: -0.05, z: 0 },
-      rightOffset: { x: 0.05, z: 0 },
+      leftOffset: (out) => {
+        const anchor = this._actors?.windChild?.leftFootAnchor;
+        if (anchor) {
+          out.x = anchor.x;
+          out.z = anchor.z;
+        }
+      },
+      rightOffset: (out) => {
+        const anchor = this._actors?.windChild?.rightFootAnchor;
+        if (anchor) {
+          out.x = anchor.x;
+          out.z = anchor.z;
+        }
+      },
     });
   }
 
@@ -1328,7 +1344,7 @@ export class LaboratoryBuilder {
         this.sandContactSystem.updateActor('player', playerPos, delta);
       }
     }
-    for (let i = 0; i < additionalPositions.length && i < this.contactActorIds.length; i += 1) {
+    for (let i = 0; i < additionalPositions.length && i + 1 < this.contactActorIds.length; i += 1) {
       if (i === 0) {
         if (this.sandFootstepSystem.hasDetailedFootprints('wind-child')) {
           const child = this._actors?.windChild;
@@ -1338,7 +1354,7 @@ export class LaboratoryBuilder {
           this.sandContactSystem.updateWake('wind-child', additionalPositions[i], delta);
         }
       } else {
-        this.sandContactSystem.updateActor(this.contactActorIds[i], additionalPositions[i], delta);
+        this.sandContactSystem.updateActor(this.contactActorIds[i + 1], additionalPositions[i], delta);
       }
     }
 

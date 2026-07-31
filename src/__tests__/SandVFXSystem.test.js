@@ -32,6 +32,7 @@ describe('SandVFXSystem', () => {
     const manager = createManager();
     const vfx = new SandVFXSystem(new THREE.Scene(), manager, { quality: 'low' });
     const initialSystems = manager.batchRenderer.addSystem.mock.calls.length;
+    const droppedBefore = vfx.getStats().droppedEffects;
 
     vfx.triggerSandFootstepAt(Number.NaN, -55);
     vfx.triggerSandFootstepAt(0, -55);
@@ -40,7 +41,7 @@ describe('SandVFXSystem', () => {
 
     expect(manager.batchRenderer.addSystem).toHaveBeenCalledTimes(initialSystems);
     expect(vfx.getStats().footstepPoolActive).toBe(0);
-    expect(vfx.getStats().droppedEffects).toBeGreaterThanOrEqual(0);
+    expect(vfx.getStats().droppedEffects).toBeGreaterThan(droppedBefore);
     vfx.dispose();
     expect(() => vfx.dispose()).not.toThrow();
   });

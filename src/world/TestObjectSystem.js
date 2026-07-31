@@ -21,10 +21,8 @@ export class TestObjectSystem {
       maxZ: bounds.maxZ ?? -46.5,
     };
     this.sandTime = 0;
-    this.sampleOut = { depth: 0, berm: 0, compression: 0 };
     this.nextContactId = 0;
     this.contactSystem = null;
-    this.lastFootprints = new WeakMap();
     this.disposed = false;
     for (let index = 0; index < this.objects.length; index += 1) {
       this._prepareObject(this.objects[index]);
@@ -173,7 +171,7 @@ export class TestObjectSystem {
       return;
     }
 
-    const previous = this.lastFootprints.get(object) || object.footprintState;
+    const previous = object.footprintState;
     if (previous?.initialized) {
       const distance = Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z);
       if (distance < 0.35 && this.sandTime - previous.time < 0.12) return;
@@ -189,13 +187,11 @@ export class TestObjectSystem {
       initialized: true,
     };
     object.footprintState = updatedState;
-    this.lastFootprints.set(object, updatedState);
   }
 
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
     this.objects.length = 0;
-    this.lastFootprints = new WeakMap();
   }
 }

@@ -2,13 +2,13 @@ import { BatchedRenderer } from 'three.quarks';
 import { ParticlePresetRegistry } from './ParticlePresetRegistry.js';
 
 export class VFXManager {
-  constructor(scene) {
+  constructor(scene, options = {}) {
     this.batchRenderer = new BatchedRenderer();
     scene.add(this.batchRenderer);
     this.isPaused = false;
     this.registry = new ParticlePresetRegistry(this);
     this.activeEffects = [];
-    this.quality = 'high'; // low, medium, high
+    this.quality = options?.quality ?? 'high'; // low, medium, high
     this.reducedMotion = false;
   }
 

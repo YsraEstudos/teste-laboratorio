@@ -216,9 +216,10 @@ describe('PerformanceProfiler visibility', () => {
   it('does not touch the DOM while hidden', () => {
     const profiler = new PerformanceProfiler({});
     profiler.setVisible(false);
+    const before = profiler.fpsValEl.textContent;
     profiler.fps = 12;
     profiler.endFrame(createFakeRenderer());
-    expect(profiler.fpsValEl.textContent).not.toBe(12);
+    expect(profiler.fpsValEl.textContent).toBe(before);
     profiler.destroy();
   });
 

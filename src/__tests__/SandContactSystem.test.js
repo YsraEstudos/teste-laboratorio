@@ -35,7 +35,7 @@ describe('SandContactSystem', () => {
     system.updateActor('player', { x: 1000, z: -55 }, 1);
     system.updateActor('player', { x: 0, z: -55 }, 1);
     system.updateActor('player', { x: 1000, z: -55 }, 1);
-    expect(contacts.length).toBeLessThanOrEqual(4);
+    expect(contacts.length).toBe(0);
   });
 
   it('aceita jogador e Wind Child simultaneamente e descarta após dispose', () => {

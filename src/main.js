@@ -66,7 +66,7 @@ export class Game {
     this.navigation = new NavigationGrid(this.lab.colliders);
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
-    this.vfxManager = new VFXManager(this.renderer.scene);
+    this.vfxManager = new VFXManager(this.renderer.scene, { quality: settings.quality });
     this.sandVFX = new SandVFXSystem(this.renderer.scene, this.vfxManager, { quality: settings.quality });
     this.lab.setSandVFX?.(this.sandVFX);
     this.groundDust = new GroundDustSystem(this.renderer.scene, this.vfxManager);

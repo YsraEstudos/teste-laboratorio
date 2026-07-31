@@ -1,12 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../useGameStore.js';
 import { gameStore } from '../../state/gameStore.js';
+import { QUALITY_LEVELS } from '../../config/GameSettings.js';
 
-const QUALITY_OPTIONS = [
-  ['low', 'Baixo'],
-  ['medium', 'Médio'],
-  ['high', 'Alto'],
-];
+// Local display labels only; identifiers come from the shared QUALITY_LEVELS config
+// so newly added levels appear automatically and stay consistent with gameStore.setQuality.
+const QUALITY_LABELS = {
+  low: 'Baixo',
+  medium: 'Médio',
+  high: 'Alto',
+};
+
+const QUALITY_OPTIONS = QUALITY_LEVELS.map((level) => [level, QUALITY_LABELS[level] ?? level]);
 
 export function HUD() {
   const {
@@ -27,11 +32,31 @@ export function HUD() {
 
   const settingsPanelRef = useRef(null);
 
-  // Escape closes the settings dialog; listeners exist only while open.
+  // Escape closes the settings dialog; Tab cycles focus within it.
+  // Listeners exist only while the dialog is open.
   useEffect(() => {
     if (!settingsOpen) return undefined;
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') gameStore.closeSettings();
+      if (event.key === 'Escape') {
+        gameStore.closeSettings();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const panel = settingsPanelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);

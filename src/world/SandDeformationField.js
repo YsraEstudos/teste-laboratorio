@@ -4,7 +4,6 @@ import { SAND_BOUNDS, isFiniteSandBrush } from './SandBounds.js';
 
 const MAX_RELAX_STEP = 1;
 const TILE_SIZE = 16;
-const BRUSH_STRIDE = 9;
 const DEFAULT_MAX_BRUSHES = 96;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -93,7 +92,6 @@ export class SandDeformationField {
       this.texture = this.simulation.publishedTarget.texture;
     }
 
-    this.brushQueue = new Float32Array(this.maxBrushesPerFrame * BRUSH_STRIDE);
     this.brushCount = 0;
     this.pendingDirty = false;
     this.dirty = false;
@@ -162,21 +160,11 @@ export class SandDeformationField {
       return false;
     }
 
-    const offset = this.brushCount * BRUSH_STRIDE;
-    this.brushQueue[offset] = x;
-    this.brushQueue[offset + 1] = z;
-    this.brushQueue[offset + 2] = radius;
-    this.brushQueue[offset + 3] = depth;
-    this.brushQueue[offset + 4] = berm;
-    this.brushQueue[offset + 5] = compression;
-    this.brushQueue[offset + 6] = yaw;
-    this.brushQueue[offset + 7] = elongation;
-    this.brushQueue[offset + 8] = edge;
     this.brushCount += 1;
     this.stats.acceptedBrushes += 1;
 
     // Apply to the CPU authority immediately so physics sees the contact in
-    // the same tick. flush() controls publication and clears the staging list.
+    // the same tick. flush() controls publication and texture upload.
     this._applyBrush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
     if (this.simulation) this.simulation.queueBrush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
     return true;

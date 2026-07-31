@@ -11,14 +11,22 @@ function expectWallFlushWithBounds(wall, bounds) {
   const maxX = wall.position.x + size.width / 2;
   const minZ = wall.position.z - size.depth / 2;
   const maxZ = wall.position.z + size.depth / 2;
-  const touches =
-    Math.abs(minX - bounds.minX) < EPS ||
-    Math.abs(maxX - bounds.maxX) < EPS ||
-    Math.abs(minZ - bounds.minZ) < EPS ||
-    Math.abs(maxZ - bounds.maxZ) < EPS;
-  expect(touches).toBe(true);
+
+  // The wall's long dimension spans the whole arena (so its other faces also
+  // coincide with the bounds), which makes the flush edge the one on the thin
+  // (thickness) axis.
+  let edge = null;
+  if (size.width < size.depth) {
+    if (Math.abs(minX - bounds.minX) < EPS) edge = 'minX';
+    else if (Math.abs(maxX - bounds.maxX) < EPS) edge = 'maxX';
+  } else {
+    if (Math.abs(minZ - bounds.minZ) < EPS) edge = 'minZ';
+    else if (Math.abs(maxZ - bounds.maxZ) < EPS) edge = 'maxZ';
+  }
+  expect(edge).not.toBeNull();
   expect(wall.position.y + size.height / 2).toBeCloseTo(0, 6);
   expect(wall.position.y - size.height / 2).toBeLessThan(-0.74);
+  return edge;
 }
 
 describe('SandTerrainSystem quality budget', () => {
@@ -53,10 +61,13 @@ describe('SandTerrainSystem quality budget', () => {
   it('builds exactly four 0.75 m perimeter walls flush with the sand bounds', () => {
     const terrain = new SandTerrainSystem(new THREE.Scene(), { quality: 'medium' });
     expect(terrain.wallMeshes).toHaveLength(4);
-    for (const wall of terrain.wallMeshes) {
-      expectWallFlushWithBounds(wall, SAND_BOUNDS);
+    const matchedEdges = terrain.wallMeshes.map((wall) => {
+      const edge = expectWallFlushWithBounds(wall, SAND_BOUNDS);
       expect(wall.castShadow).toBe(false);
-    }
+      return edge;
+    });
+    // Each perimeter edge (minX, maxX, minZ, maxZ) must be covered exactly once.
+    expect(matchedEdges.sort()).toEqual(['maxX', 'maxZ', 'minX', 'minZ']);
     terrain.dispose();
   });
 

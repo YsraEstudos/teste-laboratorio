@@ -56,7 +56,7 @@ export class SandContactSystem {
     const safeDelta = Number.isFinite(delta) && delta > 0 ? delta : 0;
     this.actorElapsed[index] += safeDelta;
 
-    if (!containsSandPoint(position.x, position.z)) {
+    if (!containsSandPoint(position.x, position.z, 0, this.bounds)) {
       this.actorInitialized[index] = 0;
       this.actorX[index] = position.x;
       this.actorZ[index] = position.z;

@@ -166,7 +166,7 @@ export class SandFootstepSystem {
     if (index < 0) return false;
     const profile = this.actorProfiles[index];
 
-    if (!containsSandPoint(position.x, position.z, OOB_MARGIN)) {
+    if (!containsSandPoint(position.x, position.z, OOB_MARGIN, this.bounds)) {
       this.discardedOutOfBounds += 1;
       this.actorInitialized[index] = 0;
       this.actorX[index] = position.x;

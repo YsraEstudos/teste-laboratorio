@@ -32,7 +32,10 @@ test('corner pixel analysis', async ({ page }) => {
       };
     };
 
-    const game = window.__LAB_DEBUG__.game;
+    const game = window.__LAB_DEBUG__?.game;
+    if (!game) {
+      throw new Error('window.__LAB_DEBUG__.game is missing');
+    }
     const canvas = document.getElementById('game-canvas');
     const gl = game.renderer.renderer.getContext();
     const w = canvas.width;

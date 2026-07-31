@@ -7,7 +7,11 @@ test('corner debug screenshots', async ({ page }) => {
 
   // Freeze gameplay so the camera stays where we put it (renderer still renders).
   await page.evaluate(() => {
-    window.__LAB_DEBUG__.game.isPlaying = false;
+    const game = window.__LAB_DEBUG__?.game;
+    if (!game) {
+      throw new Error('window.__LAB_DEBUG__.game is missing');
+    }
+    game.isPlaying = false;
   });
 
   // Shot 1: default spawn view (what the user sees).
@@ -55,6 +59,16 @@ test('corner debug screenshots', async ({ page }) => {
     sand.update(0.016);
   });
   await page.waitForTimeout(400);
+
+  // Shot 5: re-apply the elevated corner view (Shot 3) so the stamped corner
+  // screenshot captures the corner, not the center camera left over from Shot 4.
+  await page.evaluate(() => {
+    const g = window.__LAB_DEBUG__.game;
+    g.renderer.camera.position.set(-10, 9, -60);
+    g.renderer.camera.lookAt(-11.5, -2, -61.5);
+    g.renderer.camera.updateMatrixWorld();
+  });
+  await page.waitForTimeout(100);
   await page.screenshot({ path: 'test-results/corner-top-stamped.png' });
   await page.evaluate(() => {
     const g = window.__LAB_DEBUG__.game;
