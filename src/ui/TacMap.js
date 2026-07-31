@@ -1,6 +1,8 @@
 import { TacMapLayout } from './tacmap/TacMapLayout.js';
 import { TacMapRenderer } from './tacmap/TacMapRenderer.js';
 
+const DEFAULT_DIMENSIONS = { width: 920, height: 680 };
+
 /**
  * TacMap manages the tactical map overlay UI, keyboard input, and lifecycle.
  * Delegates layout calculations to TacMapLayout and rendering to TacMapRenderer.
@@ -52,7 +54,7 @@ export class TacMap {
 
         <div class="tacmap-body">
           <div class="tacmap-canvas-wrapper">
-            <canvas id="tacmap-canvas" width="920" height="680"></canvas>
+            <canvas id="tacmap-canvas" width="${DEFAULT_DIMENSIONS.width}" height="${DEFAULT_DIMENSIONS.height}"></canvas>
           </div>
 
           <div class="tacmap-sidebar">
@@ -236,21 +238,6 @@ export class TacMap {
       this.hoverEntities.textContent = 'SELECIONE UMA SALA';
       this.fastTravelBtn.style.display = 'none';
     }
-  }
-
-  /**
-   * Backward-compatible helper methods delegating to TacMapLayout.
-   */
-  _isEntityInRoom(pos, room) {
-    return this.layout.isEntityInRoom(pos, room);
-  }
-
-  _getRoomCanvasBounds(room) {
-    return this.layout.getRoomCanvasBounds(room, this.canvas ? this.canvas.width : 920, this.canvas ? this.canvas.height : 680);
-  }
-
-  _worldToCanvas(x, z) {
-    return this.layout.worldToCanvas(x, z, this.canvas ? this.canvas.width : 920, this.canvas ? this.canvas.height : 680);
   }
 
   /**

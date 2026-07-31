@@ -2,7 +2,7 @@ import { getSandQuality } from './SandQualityProfile.js';
 import * as NoiseUtils from './textures/NoiseUtils.js';
 import * as TerrainTextures from './textures/TerrainTextures.js';
 import * as SurfaceTextures from './textures/SurfaceTextures.js';
-import { _texture, _sandTexture } from './textures/TextureUtils.js';
+import { _texture } from './textures/TextureUtils.js';
 
 export class TextureGenerator {
   static _cache = new Map();
@@ -20,7 +20,7 @@ export class TextureGenerator {
   }
 
   static _sandTexture(width, height, draw, colorSpace = true) {
-    return _sandTexture(width, height, draw, colorSpace);
+    return _texture(width, height, draw, colorSpace);
   }
 
   static _noise(context, width, height, count, palette, alpha = 0.2) {
@@ -196,7 +196,7 @@ export class TextureGenerator {
    */
   static acquireSandTextureSet({ quality = 'high' } = {}) {
     const profile = getSandQuality(quality);
-    const key = quality in { low: true, medium: true, high: true } ? quality : 'high';
+    const key = ['low', 'medium', 'high'].includes(quality) ? quality : 'high';
     const cached = this._sandTextureSets.get(key);
     if (cached) {
       cached.refs += 1;
@@ -208,7 +208,10 @@ export class TextureGenerator {
     const normal = TerrainTextures.createSandNormalTexture(mapResolution);
     const roughness = TerrainTextures.createSandRoughnessTexture(mapResolution);
 
-    for (const texture of [albedo, normal, roughness]) texture.anisotropy = anisotropy;
+    for (const texture of [albedo, normal, roughness]) {
+      texture.anisotropy = anisotropy;
+      texture.repeat.set(8, 6);
+    }
     const textureSet = { refs: 1, albedo, normal, roughness };
     this._sandTextureSets.set(key, textureSet);
     return this._sandTextureSetHandle(key, textureSet);
