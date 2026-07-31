@@ -1,7 +1,9 @@
-import { ROOMS } from '../world/RoomData.js';
+import { TacMapLayout } from './tacmap/TacMapLayout.js';
+import { TacMapRenderer } from './tacmap/TacMapRenderer.js';
 
 /**
- * TacMap manages the tactical map overlay UI.
+ * TacMap manages the tactical map overlay UI, keyboard input, and lifecycle.
+ * Delegates layout calculations to TacMapLayout and rendering to TacMapRenderer.
  */
 export class TacMap {
   /**
@@ -19,17 +21,11 @@ export class TacMap {
     this.destroyed = false;
     this.animationId = null;
 
-    this.rooms = ROOMS;
+    this.layout = new TacMapLayout();
+    this.renderer = new TacMapRenderer();
 
-    this.corridors = [
-      { minX: -3, maxX: 3, minZ: -10, maxZ: -2 },
-      { minX: -28, maxX: -10, minZ: -15, maxZ: -11 },
-      { minX: 10, maxX: 28, minZ: -15, maxZ: -11 },
-      { minX: -3, maxX: 3, minZ: -30, maxZ: -18 },
-      { minX: -28, maxX: -3, minZ: -34, maxZ: -30 },
-      { minX: 3, maxX: 28, minZ: -34, maxZ: -30 },
-      { minX: -3, maxX: 3, minZ: -46, maxZ: -34 },
-    ];
+    this.rooms = this.layout.rooms;
+    this.corridors = this.layout.corridors;
 
     this._createDOM();
     this._bindEvents();
@@ -100,7 +96,7 @@ export class TacMap {
     document.body.appendChild(this.container);
 
     this.canvas = document.getElementById('tacmap-canvas');
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
     this.closeBtn = document.getElementById('tacmap-close');
     this.fastTravelBtn = document.getElementById('btn-fast-travel');
     this.hoverTitle = document.getElementById('tacmap-hover-title');
@@ -114,13 +110,13 @@ export class TacMap {
         e.preventDefault();
         this.toggle();
       } else if (e.code === 'Escape' && this.active) {
-        this.hide();
+        this.close();
       }
     };
     window.addEventListener('keydown', this._onKeyDown);
 
     if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => this.hide());
+      this.closeBtn.addEventListener('click', () => this.close());
     }
 
     if (this.fastTravelBtn) {
@@ -128,7 +124,7 @@ export class TacMap {
         if (this.hoveredRoom && this.game.player) {
           const room = this.hoveredRoom;
           this.game.player.moveTo(room.navigation.x, room.navigation.z);
-          this.hide();
+          this.close();
         }
       });
     }
@@ -143,22 +139,29 @@ export class TacMap {
         if (this.hoveredRoom && this.game.player) {
           const room = this.hoveredRoom;
           this.game.player.moveTo(room.navigation.x, room.navigation.z);
-          this.hide();
+          this.close();
         }
       });
     }
   }
 
   /**
-   * Toggles the tactical map visibility.
+   * Toggles tactical map visibility.
    */
   toggle() {
-    if (this.active) this.hide();
-    else this.show();
+    if (this.active) this.close();
+    else this.open();
   }
 
   /**
-   * Shows the tactical map.
+   * Opens / shows tactical map.
+   */
+  open() {
+    this.show();
+  }
+
+  /**
+   * Shows tactical map.
    */
   show() {
     if (this.destroyed) return;
@@ -172,7 +175,14 @@ export class TacMap {
   }
 
   /**
-   * Hides the tactical map.
+   * Closes / hides tactical map.
+   */
+  close() {
+    this.hide();
+  }
+
+  /**
+   * Hides tactical map.
    */
   hide() {
     this.active = false;
@@ -181,6 +191,8 @@ export class TacMap {
   }
 
   _onCanvasMouseMove(e) {
+    if (!this.canvas) return;
+
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
@@ -188,15 +200,7 @@ export class TacMap {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    // Check hover over rooms
-    let foundRoom = null;
-    for (const room of this.rooms) {
-      const bounds = this._getRoomCanvasBounds(room);
-      if (mouseX >= bounds.x && mouseX <= bounds.x + bounds.w && mouseY >= bounds.y && mouseY <= bounds.y + bounds.h) {
-        foundRoom = room;
-        break;
-      }
-    }
+    const foundRoom = this.layout.getRoomAtCanvasPos(mouseX, mouseY, this.canvas.width, this.canvas.height);
 
     if (this.hoveredRoom !== foundRoom) {
       this.hoveredRoom = foundRoom;
@@ -206,16 +210,18 @@ export class TacMap {
   }
 
   _updateSidebarInfo() {
+    if (!this.hoverTitle || !this.hoverDesc || !this.hoverEntities || !this.fastTravelBtn) return;
+
     if (this.hoveredRoom) {
       this.hoverTitle.textContent = this.hoveredRoom.name;
       this.hoverTitle.classList.add('amplified');
       this.hoverDesc.textContent = this.hoveredRoom.description;
 
       const entitiesInRoom = [];
-      if (this.game.player && this._isEntityInRoom(this.game.player.position, this.hoveredRoom)) {
+      if (this.game.player && this.layout.isEntityInRoom(this.game.player.position, this.hoveredRoom)) {
         entitiesInRoom.push('VOCÊ (Jogador)');
       }
-      if (this.game.windChild && this._isEntityInRoom(this.game.windChild.position, this.hoveredRoom)) {
+      if (this.game.windChild && this.layout.isEntityInRoom(this.game.windChild.position, this.hoveredRoom)) {
         entitiesInRoom.push('WIND CHILD (Cobaia 42)');
       }
 
@@ -232,47 +238,19 @@ export class TacMap {
     }
   }
 
+  /**
+   * Backward-compatible helper methods delegating to TacMapLayout.
+   */
   _isEntityInRoom(pos, room) {
-    return pos.x >= room.minX && pos.x <= room.maxX && pos.z >= room.minZ && pos.z <= room.maxZ;
+    return this.layout.isEntityInRoom(pos, room);
   }
 
   _getRoomCanvasBounds(room) {
-    const minWorldX = -45;
-    const maxWorldX = 45;
-    const minWorldZ = -68;
-    const maxWorldZ = 12;
-
-    const pad = 40;
-    const w = this.canvas.width - pad * 2;
-    const h = this.canvas.height - pad * 2;
-
-    const x1 = pad + ((room.minX - minWorldX) / (maxWorldX - minWorldX)) * w;
-    const x2 = pad + ((room.maxX - minWorldX) / (maxWorldX - minWorldX)) * w;
-    const y1 = pad + ((room.minZ - minWorldZ) / (maxWorldZ - minWorldZ)) * h;
-    const y2 = pad + ((room.maxZ - minWorldZ) / (maxWorldZ - minWorldZ)) * h;
-
-    return {
-      x: Math.min(x1, x2),
-      y: Math.min(y1, y2),
-      w: Math.abs(x2 - x1),
-      h: Math.abs(y2 - y1),
-    };
+    return this.layout.getRoomCanvasBounds(room, this.canvas ? this.canvas.width : 920, this.canvas ? this.canvas.height : 680);
   }
 
   _worldToCanvas(x, z) {
-    const minWorldX = -45;
-    const maxWorldX = 45;
-    const minWorldZ = -68;
-    const maxWorldZ = 12;
-
-    const pad = 40;
-    const w = this.canvas.width - pad * 2;
-    const h = this.canvas.height - pad * 2;
-
-    return {
-      cx: pad + ((x - minWorldX) / (maxWorldX - minWorldX)) * w,
-      cy: pad + ((z - minWorldZ) / (maxWorldZ - minWorldZ)) * h,
-    };
+    return this.layout.worldToCanvas(x, z, this.canvas ? this.canvas.width : 920, this.canvas ? this.canvas.height : 680);
   }
 
   /**
@@ -306,152 +284,12 @@ export class TacMap {
       return;
     }
 
-    const ctx = this.ctx;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
-
-    // Clear Canvas & Background Grid
-    ctx.fillStyle = '#0a1017';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = 'rgba(73, 215, 232, 0.07)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 30) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // Draw Corridors
-    ctx.fillStyle = 'rgba(30, 50, 65, 0.7)';
-    ctx.strokeStyle = 'rgba(73, 215, 232, 0.3)';
-    ctx.lineWidth = 2;
-    for (const corr of this.corridors) {
-      const b = this._getRoomCanvasBounds(corr);
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-      ctx.strokeRect(b.x, b.y, b.w, b.h);
-    }
-
-    // Draw Rooms
-    for (const room of this.rooms) {
-      const b = this._getRoomCanvasBounds(room);
-      const isHovered = this.hoveredRoom === room;
-
-      // Fill
-      ctx.fillStyle = isHovered ? 'rgba(73, 215, 232, 0.28)' : 'rgba(16, 28, 38, 0.85)';
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-
-      // Border
-      ctx.strokeStyle = isHovered ? '#ffffff' : room.color || '#49d7e8';
-      ctx.lineWidth = isHovered ? 4 : 2;
-      ctx.strokeRect(b.x, b.y, b.w, b.h);
-
-      if (isHovered) {
-        ctx.shadowColor = '#49d7e8';
-        ctx.shadowBlur = 15;
-        ctx.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
-        ctx.shadowBlur = 0;
-      }
-
-      // Room Title Font (Enlarged / Ampliado on Hover)
-      const fontSize = isHovered ? 20 : 13;
-      ctx.font = `${isHovered ? '700' : '600'} ${fontSize}px Rajdhani, Arial, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = isHovered ? '#ffffff' : room.color || '#a9f0ff';
-
-      // Wrap or truncate long title
-      const roomName = room.name;
-      ctx.fillText(roomName, b.x + b.w / 2, b.y + b.h / 2);
+    if (this.ctx && this.canvas) {
+      this.renderer.render(this.ctx, this.canvas, this.layout, this.game, this.hoveredRoom, this.time);
     }
 
     this._dirty = false;
     this._entitiesMoved = false;
-
-    // Render Real-time Entities Markers
-    // 1. Wind Child Marker (Emerald/Gold Swirl)
-    if (this.game.windChild) {
-      const childPos = this.game.windChild.position;
-      const c = this._worldToCanvas(childPos.x, childPos.z);
-
-      const pulse = 1 + Math.sin(this.time * 6) * 0.15;
-
-      ctx.save();
-      ctx.translate(c.cx, c.cy);
-
-      // Rotating Aura Ring
-      ctx.strokeStyle = '#54f08c';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, 16 * pulse, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.fillStyle = '#54f08c';
-      ctx.shadowColor = '#54f08c';
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(0, 0, 8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Label
-      ctx.font = '700 12px Rajdhani, Arial, sans-serif';
-      ctx.fillStyle = '#54f08c';
-      ctx.textAlign = 'center';
-      ctx.fillText('WIND CHILD', 0, 26);
-
-      ctx.restore();
-    }
-
-    // 2. Player Marker (Cyan Pulsing Dot + Direction Cone)
-    if (this.game.player) {
-      const playerPos = this.game.player.position;
-      const p = this._worldToCanvas(playerPos.x, playerPos.z);
-      const rotY = this.game.player.model ? this.game.player.model.rotation.y : 0;
-
-      ctx.save();
-      ctx.translate(p.cx, p.cy);
-
-      // Directional Cone
-      const coneLength = 22;
-      const dirX = Math.sin(rotY) * coneLength;
-      const dirY = Math.cos(rotY) * coneLength;
-
-      ctx.fillStyle = 'rgba(73, 215, 232, 0.35)';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, 24, rotY - Math.PI / 2 - 0.4, rotY - Math.PI / 2 + 0.4);
-      ctx.closePath();
-      ctx.fill();
-
-      // Core Marker
-      ctx.fillStyle = '#49d7e8';
-      ctx.shadowColor = '#49d7e8';
-      ctx.shadowBlur = 14;
-      ctx.beginPath();
-      ctx.arc(0, 0, 9, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Label
-      ctx.font = '700 13px Rajdhani, Arial, sans-serif';
-      ctx.fillStyle = '#49d7e8';
-      ctx.textAlign = 'center';
-      ctx.fillText('VOCÊ (JOGADOR)', 0, -18);
-
-      ctx.restore();
-    }
 
     this._scheduleFrame();
   }
@@ -465,6 +303,9 @@ export class TacMap {
     });
   }
 
+  /**
+   * Destroys the tactical map overlay instance.
+   */
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
