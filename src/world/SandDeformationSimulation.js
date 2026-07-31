@@ -174,6 +174,49 @@ export class SandDeformationSimulation {
     return true;
   }
 
+  /**
+   * Replaces both ping-pong targets with the CPU field's channels so the
+   * published texture matches the authoritative state after a restore().
+   * The RGBA8 source mirrors the CPU byte layout (0..255) exactly, so the
+   * texel copy preserves the normalized 0..1 values in the half-float targets.
+   * @param {Uint8Array} depth
+   * @param {Uint8Array} berm
+   * @param {Uint8Array} compression
+   * @returns {boolean}
+   */
+  uploadChannels(depth, berm, compression) {
+    if (this.disposed || !this.renderer) return false;
+    this.brushCount = 0;
+    const count = this.resolution * this.resolution;
+    const data = new Uint8Array(count * 4);
+    for (let index = 0; index < count; index += 1) {
+      data[index * 4] = depth[index];
+      data[index * 4 + 1] = berm[index];
+      data[index * 4 + 2] = compression[index];
+      data[index * 4 + 3] = 255;
+    }
+    const source = new THREE.DataTexture(
+      data,
+      this.resolution,
+      this.resolution,
+      THREE.RGBAFormat,
+      THREE.UnsignedByteType,
+    );
+    source.flipY = false;
+    source.minFilter = THREE.NearestFilter;
+    source.magFilter = THREE.NearestFilter;
+    source.needsUpdate = true;
+    const copyTextureToTexture = this.renderer.copyTextureToTexture;
+    if (typeof copyTextureToTexture === 'function') {
+      const position = new THREE.Vector2(0, 0);
+      for (const target of this.renderTargets) {
+        copyTextureToTexture.call(this.renderer, position, source, target.texture);
+      }
+    }
+    source.dispose();
+    return true;
+  }
+
   dispose() {
     if (this.disposed) return;
     this.disposed = true;

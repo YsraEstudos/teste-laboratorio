@@ -3,6 +3,7 @@ import { SandDeformationSimulation } from './SandDeformationSimulation.js';
 import { SAND_BOUNDS, isFiniteSandBrush } from './SandBounds.js';
 
 const MAX_RELAX_STEP = 1;
+const MAX_RELAX_PASSES = 256;
 const TILE_SIZE = 16;
 const DEFAULT_MAX_BRUSHES = 96;
 
@@ -96,6 +97,7 @@ export class SandDeformationField {
     this.pendingDirty = false;
     this.dirty = false;
     this.decayAccumulator = 0;
+    this._lastRelaxSeconds = 0;
     this.disposed = false;
     this.stats = {
       acceptedBrushes: 0,
@@ -234,22 +236,27 @@ export class SandDeformationField {
         }
       }
     }
-    const centerPx = clamp(Math.round(((x - this.minX) / worldWidth) * (this.width - 1)), 0, this.width - 1);
-    const centerPy = clamp(Math.round(((z - this.minZ) / worldHeight) * (this.height - 1)), 0, this.height - 1);
-    const centerIndex = centerPy * this.width + centerPx;
-    const centerDepth = Math.round(clamp(depth / this.maxDepth, 0, 1) * 255);
-    const centerBerm = Math.round(clamp(berm / this.maxDepth, 0, 1) * 255);
-    const centerCompression = Math.round(clamp(compression, 0, 1) * 255);
-    if (
-      centerDepth > this.data[centerIndex] ||
-      centerBerm > this.bermData[centerIndex] ||
-      centerCompression > this.compressionData[centerIndex]
-    ) {
-      this.data[centerIndex] = Math.max(this.data[centerIndex], centerDepth);
-      this.bermData[centerIndex] = Math.max(this.bermData[centerIndex], centerBerm);
-      this.compressionData[centerIndex] = Math.max(this.compressionData[centerIndex], centerCompression);
-      this._markActiveTile(centerPx, centerPy);
-      changed = true;
+    // The center sample is only meaningful when the brush anchor is inside the
+    // field: clamping it to a border cell would stamp a full-strength center
+    // value at the edge when the anchor sits outside the bounds.
+    if (this._containsPoint(x, z)) {
+      const centerPx = clamp(Math.round(((x - this.minX) / worldWidth) * (this.width - 1)), 0, this.width - 1);
+      const centerPy = clamp(Math.round(((z - this.minZ) / worldHeight) * (this.height - 1)), 0, this.height - 1);
+      const centerIndex = centerPy * this.width + centerPx;
+      const centerDepth = Math.round(clamp(depth / this.maxDepth, 0, 1) * 255);
+      const centerBerm = Math.round(clamp(berm / this.maxDepth, 0, 1) * 255);
+      const centerCompression = Math.round(clamp(compression, 0, 1) * 255);
+      if (
+        centerDepth > this.data[centerIndex] ||
+        centerBerm > this.bermData[centerIndex] ||
+        centerCompression > this.compressionData[centerIndex]
+      ) {
+        this.data[centerIndex] = Math.max(this.data[centerIndex], centerDepth);
+        this.bermData[centerIndex] = Math.max(this.bermData[centerIndex], centerBerm);
+        this.compressionData[centerIndex] = Math.max(this.compressionData[centerIndex], centerCompression);
+        this._markActiveTile(centerPx, centerPy);
+        changed = true;
+      }
     }
     this.pendingDirty ||= changed;
     return changed;
@@ -311,12 +318,19 @@ export class SandDeformationField {
   }
 
   _relax(delta) {
+    this._lastRelaxSeconds = 0;
     if (this.stats.activeTiles === 0 || this.decayPerSecond <= 0) return false;
     this.decayAccumulator += delta;
     let changed = false;
     const stepFraction = this.decayPerSecond * MAX_RELAX_STEP;
-    while (this.decayAccumulator >= MAX_RELAX_STEP) {
+    let passes = 0;
+    // Bound a single call so a pathological delta (e.g. 100000 s) cannot run
+    // thousands of blocking passes. Excess time stays in decayAccumulator and
+    // is consumed by later flushes; _lastRelaxSeconds reports the seconds
+    // actually consumed so the GPU simulation advances in lockstep.
+    while (this.decayAccumulator >= MAX_RELAX_STEP && passes < MAX_RELAX_PASSES) {
       this.decayAccumulator -= MAX_RELAX_STEP;
+      passes += 1;
       for (let tileY = 0; tileY < this.tilesY; tileY += 1) {
         for (let tileX = 0; tileX < this.tilesX; tileX += 1) {
           const tileIndex = tileY * this.tilesX + tileX;
@@ -329,6 +343,7 @@ export class SandDeformationField {
         }
       }
     }
+    this._lastRelaxSeconds = passes * MAX_RELAX_STEP;
     if (changed) this.pendingDirty = true;
     return changed;
   }
@@ -337,9 +352,15 @@ export class SandDeformationField {
     if (this.disposed) return false;
     const hadBrushes = this.brushCount > 0;
     this.brushCount = 0;
-    const relaxed = Number.isFinite(delta) && delta > 0 ? this._relax(delta) : false;
+    // Normalize the elapsed time so NaN/Infinity/negative deltas can never
+    // reach the CPU decay loop or the GPU uDecay uniform.
+    const elapsed = Number.isFinite(delta) && delta > 0 ? delta : 0;
+    const relaxed = elapsed > 0 ? this._relax(elapsed) : false;
     if (this.simulation && (hadBrushes || relaxed)) {
-      this.simulation.update(Math.max(delta, MAX_RELAX_STEP));
+      // Advance the GPU with the seconds the CPU actually relaxed (bounded by
+      // MAX_RELAX_PASSES) instead of Math.max(delta, MAX_RELAX_STEP): a zero or
+      // tiny delta must drain the brush queue without applying decay.
+      this.simulation.update(relaxed ? this._lastRelaxSeconds : elapsed);
       this.texture = this.simulation.publishedTarget.texture;
     }
     if (hadBrushes || relaxed || this.pendingDirty) this.dirty = true;
@@ -408,7 +429,13 @@ export class SandDeformationField {
   }
 
   restore(snapshot) {
-    if (this.disposed || this.backend !== 'cpuR8' || !snapshot || snapshot.version !== 1) return false;
+    if (
+      this.disposed ||
+      (this.backend !== 'cpuR8' && this.backend !== 'gpuPingPong') ||
+      !snapshot ||
+      snapshot.version !== 1
+    )
+      return false;
     if (
       snapshot.width !== this.width ||
       snapshot.height !== this.height ||
@@ -443,7 +470,17 @@ export class SandDeformationField {
     }
     this.brushCount = 0;
     this.pendingDirty = false;
+    this.decayAccumulator = 0;
     this.dirty = true;
+
+    // Keep the GPU render pass in sync with the restored authority: drop any
+    // queued brushes and re-upload the restored channels into the ping-pong
+    // targets before the snapshot is exposed through this.texture.
+    if (this.simulation) {
+      this.simulation.brushCount = 0;
+      this.simulation.uploadChannels(this.data, this.bermData, this.compressionData);
+      this.texture = this.simulation.publishedTarget.texture;
+    }
     return true;
   }
 
@@ -451,6 +488,8 @@ export class SandDeformationField {
     return {
       backend: this.backend,
       resolution: this.resolution,
+      width: this.width,
+      height: this.height,
       acceptedBrushes: this.stats.acceptedBrushes,
       droppedBrushes: this.stats.droppedBrushes,
       activeTiles: this.stats.activeTiles,

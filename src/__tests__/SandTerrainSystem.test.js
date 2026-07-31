@@ -12,14 +12,21 @@ function expectWallFlushWithBounds(wall, bounds) {
   const minZ = wall.position.z - size.depth / 2;
   const maxZ = wall.position.z + size.depth / 2;
 
-  // The wall's long dimension spans the whole arena (so its other faces also
-  // coincide with the bounds), which makes the flush edge the one on the thin
-  // (thickness) axis.
+  // A wall is flush against one perimeter edge on its thin (thickness) axis,
+  // while its long dimension spans the whole arena along the other axis.
   let edge = null;
   if (size.width < size.depth) {
+    // Thin in X (oriented along Z): the long (depth) dimension must cover
+    // the full arena in Z.
+    expect(minZ).toBeCloseTo(bounds.minZ, 6);
+    expect(maxZ).toBeCloseTo(bounds.maxZ, 6);
     if (Math.abs(minX - bounds.minX) < EPS) edge = 'minX';
     else if (Math.abs(maxX - bounds.maxX) < EPS) edge = 'maxX';
   } else {
+    // Thin in Z (oriented along X): the long (width) dimension must cover
+    // the full arena in X.
+    expect(minX).toBeCloseTo(bounds.minX, 6);
+    expect(maxX).toBeCloseTo(bounds.maxX, 6);
     if (Math.abs(minZ - bounds.minZ) < EPS) edge = 'minZ';
     else if (Math.abs(maxZ - bounds.maxZ) < EPS) edge = 'maxZ';
   }

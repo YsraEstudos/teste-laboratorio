@@ -126,6 +126,7 @@ export class SandFootstepSystem {
   }
 
   setSandVFX(sandVFX) {
+    if (this.disposed) return;
     this.sandVFX = sandVFX;
   }
 
@@ -244,8 +245,12 @@ export class SandFootstepSystem {
   }
 
   getStats() {
+    let registered = 0;
+    for (let index = 0; index < this.actorIds.length; index += 1) {
+      if (this.actorIds[index] !== null) registered += 1;
+    }
     return {
-      registered: this.actorIds.filter((id) => id !== null).length,
+      registered,
       acceptedFootprints: this.acceptedFootprints,
       droppedFootprints: this.droppedFootprints,
       discardedOutOfBounds: this.discardedOutOfBounds,

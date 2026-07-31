@@ -8,7 +8,8 @@ export class VFXManager {
     this.isPaused = false;
     this.registry = new ParticlePresetRegistry(this);
     this.activeEffects = [];
-    this.quality = options?.quality ?? 'high'; // low, medium, high
+    const quality = options?.quality;
+    this.quality = quality === 'low' || quality === 'medium' || quality === 'high' ? quality : 'high'; // low, medium, high
     this.reducedMotion = false;
   }
 
