@@ -1,4 +1,4 @@
-import { ROOMS } from '../../world/RoomData.js';
+import { ROOMS, TACMAP_CORRIDORS, TACMAP_WORLD_BOUNDS } from '../../world/RoomData.js';
 
 /**
  * TacMapLayout manages tactical map layout data and coordinate transforms.
@@ -7,20 +7,12 @@ export class TacMapLayout {
   constructor() {
     this.rooms = ROOMS;
 
-    this.corridors = [
-      { minX: -3, maxX: 3, minZ: -10, maxZ: -2 },
-      { minX: -28, maxX: -10, minZ: -15, maxZ: -11 },
-      { minX: 10, maxX: 28, minZ: -15, maxZ: -11 },
-      { minX: -3, maxX: 3, minZ: -30, maxZ: -18 },
-      { minX: -28, maxX: -3, minZ: -34, maxZ: -30 },
-      { minX: 3, maxX: 28, minZ: -34, maxZ: -30 },
-      { minX: -3, maxX: 3, minZ: -46, maxZ: -34 },
-    ];
+    this.corridors = TACMAP_CORRIDORS;
 
-    this.minWorldX = -45;
-    this.maxWorldX = 45;
-    this.minWorldZ = -68;
-    this.maxWorldZ = 12;
+    this.minWorldX = TACMAP_WORLD_BOUNDS.minX;
+    this.maxWorldX = TACMAP_WORLD_BOUNDS.maxX;
+    this.minWorldZ = TACMAP_WORLD_BOUNDS.minZ;
+    this.maxWorldZ = TACMAP_WORLD_BOUNDS.maxZ;
     this.padding = 40;
 
     // Reusable objects for zero-allocation calculations

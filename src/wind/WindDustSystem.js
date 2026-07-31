@@ -102,11 +102,11 @@ export class DustWindCollisionBehavior {
     p.position.addScaledVector(this._normal, 0.035);
     const normalSpeed = p.velocity.dot(this._normal);
     if (normalSpeed < 0) p.velocity.addScaledVector(this._normal, -normalSpeed * 1.55);
-    
+
     this._scatter.set((Math.random() - 0.5) * 1.35, Math.random() * 0.85, (Math.random() - 0.5) * 1.35);
     this._scatter.addScaledVector(this._normal, 0.45 + Math.random() * 0.65);
     p.velocity.addScaledVector(this._scatter, 0.62).multiplyScalar(0.62);
-    
+
     p.collisions = (p.collisions || 0) + 1;
     if (p.collisions > 3) p.life = Math.min(p.life, p.age + 0.65);
   }

@@ -8,6 +8,7 @@ const MAX_BRUSHES = 96;
  * deliberately isolated so the renderer can consume the same brush stream.
  */
 export class SandDeformationSimulation {
+  static MAX_BRUSHES = MAX_BRUSHES;
   constructor({
     renderer,
     scene = new THREE.Scene(),

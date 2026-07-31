@@ -91,6 +91,23 @@ export const ROOMS = Object.freeze([
   }),
 ]);
 
+export const TACMAP_CORRIDORS = Object.freeze([
+  Object.freeze({ minX: -3, maxX: 3, minZ: -10, maxZ: -2 }),
+  Object.freeze({ minX: -28, maxX: -10, minZ: -15, maxZ: -11 }),
+  Object.freeze({ minX: 10, maxX: 28, minZ: -15, maxZ: -11 }),
+  Object.freeze({ minX: -3, maxX: 3, minZ: -30, maxZ: -18 }),
+  Object.freeze({ minX: -28, maxX: -3, minZ: -34, maxZ: -30 }),
+  Object.freeze({ minX: 3, maxX: 28, minZ: -34, maxZ: -30 }),
+  Object.freeze({ minX: -3, maxX: 3, minZ: -46, maxZ: -34 }),
+]);
+
+export const TACMAP_WORLD_BOUNDS = Object.freeze({
+  minX: -45,
+  maxX: 45,
+  minZ: -68,
+  maxZ: 12,
+});
+
 export function getRoomAt(x, z) {
   return ROOMS.find((room) => x >= room.minX && x <= room.maxX && z >= room.minZ && z <= room.maxZ) ?? null;
 }

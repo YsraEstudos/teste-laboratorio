@@ -26,6 +26,23 @@ describe('SandDeformationSimulation', () => {
     expect(renderer.setRenderTarget).toHaveBeenLastCalledWith(null);
   });
 
+  it('zera a fila de pincéis no update e rejeita entradas acima do limite', () => {
+    const renderer = createWebGL2Renderer();
+    const simulation = new SandDeformationSimulation({ renderer, scene: new THREE.Scene() });
+    const limit = SandDeformationSimulation.MAX_BRUSHES;
+
+    for (let i = 0; i < limit; i += 1) {
+      expect(simulation.queueBrush(0, 0, 1, 0.1)).toBe(true);
+    }
+    expect(simulation.queueBrush(0, 0, 1, 0.1)).toBe(false);
+    expect(simulation.brushCount).toBe(limit);
+
+    simulation.update(1 / 60);
+
+    expect(simulation.brushCount).toBe(0);
+    expect(simulation.queueBrush(0, 0, 1, 0.1)).toBe(true);
+  });
+
   it('descarta recursos auxiliares e targets uma única vez', () => {
     const renderer = createWebGL2Renderer();
     const simulation = new SandDeformationSimulation({ renderer, scene: new THREE.Scene() });

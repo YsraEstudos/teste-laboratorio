@@ -10,7 +10,7 @@ describe('WindParticleSystem with VFXManager', () => {
       loadPreset: vi.fn().mockResolvedValue(undefined),
       playEffect: vi.fn(() => new THREE.Object3D()),
     };
-    
+
     const system = new WindParticleSystem(new THREE.Scene(), vfxManager);
     system._playBlastSound = vi.fn(); // mock audio to avoid AudioContext errors in test
 
@@ -22,15 +22,14 @@ describe('WindParticleSystem with VFXManager', () => {
     expect(vfxManager.loadPreset).toHaveBeenCalledWith('GroundDustBurst', 'vfx/GroundDustBurst.json');
     expect(vfxManager.loadPreset).toHaveBeenCalledWith('ShockwaveRing', 'vfx/ShockwaveRing.json');
     expect(vfxManager.loadPreset).toHaveBeenCalledWith('ImpactPlume', 'vfx/ImpactPlume.json');
-    
-    await new Promise(resolve => setTimeout(resolve, 0));
-    
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(vfxManager.playEffect).toHaveBeenCalledWith('VortexBlast', origin);
     expect(vfxManager.playEffect).toHaveBeenCalledWith('GroundDustBurst', origin);
     expect(vfxManager.playEffect).toHaveBeenCalledWith('ShockwaveRing', origin);
     expect(vfxManager.playEffect).toHaveBeenCalledWith('ImpactPlume', target);
-    
+
     expect(system._playBlastSound).toHaveBeenCalledWith(2);
   });
-
 });

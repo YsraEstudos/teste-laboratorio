@@ -1,31 +1,5 @@
 import { test } from './fixtures/runtime-guard.js';
 
-function sampleBlock(buf, w, h, cx, cy, size) {
-  const half = Math.floor(size / 2);
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let n = 0;
-  for (let dy = -half; dy <= half; dy += 2) {
-    for (let dx = -half; dx <= half; dx += 2) {
-      const x = cx + dx;
-      const y = cy + dy;
-      if (x < 0 || x >= w || y < 0 || y >= h) continue;
-      const i = (y * w + x) * 4;
-      r += buf[i];
-      g += buf[i + 1];
-      b += buf[i + 2];
-      n += 1;
-    }
-  }
-  return {
-    r: Math.round(r / n),
-    g: Math.round(g / n),
-    b: Math.round(b / n),
-    lum: Math.round((0.2126 * r + 0.7152 * g + 0.0722 * b) / n),
-  };
-}
-
 test('corner pixel analysis', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'ENTRAR NO LABORATÓRIO' }).click();
