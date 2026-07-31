@@ -1,3 +1,4 @@
+/* global process, window, console */
 import { collectSandSample } from '../src/engine/PerformanceStats.js';
 
 const DEFAULT_FRAMES = 120;
