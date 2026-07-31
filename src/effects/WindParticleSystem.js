@@ -45,8 +45,7 @@ export class WindParticleSystem {
           effect.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
         }
       }
-    } catch (_e) {
-      // eslint-disable-line no-unused-vars
+    } catch {
       // Ignore if preset isn't created yet or URL fails
     }
   }
@@ -93,8 +92,7 @@ export class WindParticleSystem {
 
       noise.start(ctx.currentTime);
       noise.stop(ctx.currentTime + duration);
-    } catch (_e) {
-      // eslint-disable-line no-unused-vars
+    } catch {
       // Audio not supported or failed
     }
   }

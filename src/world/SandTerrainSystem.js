@@ -219,6 +219,10 @@ export class SandTerrainSystem {
     }
 
     this.deformationField.advance(delta);
+    if (this.depthTexture !== this.deformationField.texture) {
+      this.depthTexture = this.deformationField.texture;
+      this.customUniforms.uDeformationMap.value = this.depthTexture;
+    }
     if (this.deformationField.consumeDirty()) {
       this.lastUploadAt = typeof performance !== 'undefined' ? performance.now() : 0;
     }

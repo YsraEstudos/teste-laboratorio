@@ -140,7 +140,10 @@ export class SandDeformationField {
       }
     }
     if (changed) this.dirty = true;
-    this.simulation?.update(elapsed);
+    if (this.simulation) {
+      this.simulation.update(elapsed);
+      this.texture = this.simulation.publishedTarget.texture;
+    }
     return changed;
   }
 
