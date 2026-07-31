@@ -20,6 +20,13 @@ import { gameStore } from './state/gameStore.js';
 import { VFXManager } from './effects/VFXManager.js';
 import { SandVFXSystem } from './effects/SandVFXSystem.js';
 import { GroundDustSystem } from './effects/GroundDustSystem.js';
+import { collectSandSample } from './engine/PerformanceStats.js';
+import { isLabDebugEnabled } from './engine/LabDebug.js';
+
+const LAB_DEBUG_ENABLED = isLabDebugEnabled({
+  isDevelopmentOrTest: import.meta.env.DEV || import.meta.env.MODE === 'e2e',
+  optIn: import.meta.env.VITE_LAB_DEBUG === 'true',
+});
 
 export class Game {
   static CONSTANTS = {
@@ -41,7 +48,14 @@ export class Game {
     this.profiler = new PerformanceProfiler(this);
 
     // World & Navigation
-    this.lab = new LaboratoryBuilder(this.renderer.scene);
+    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer);
+    if (LAB_DEBUG_ENABLED) {
+      window.__LAB_DEBUG__ = {
+        game: this,
+        renderer: this.renderer,
+        sand: this.lab.sandTerrainSystem,
+      };
+    }
     this.navigation = new NavigationGrid(this.lab.colliders);
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
@@ -117,15 +131,17 @@ export class Game {
         let targetObj = null;
         if (intersects.length > 0) {
           const hit = intersects[0].object;
-          const testObjects = Array.isArray(this.lab.testObjects) ? this.lab.testObjects : (this.lab.testObjects?.objects || []);
+          const testObjects = Array.isArray(this.lab.testObjects)
+            ? this.lab.testObjects
+            : this.lab.testObjects?.objects || [];
           for (const obj of testObjects) {
-             if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh) {
-                targetObj = obj;
-                break;
-             }
+            if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh) {
+              targetObj = obj;
+              break;
+            }
           }
         }
-        
+
         this.triggerWindBlastOnObjects(targetObj);
         return;
       }
@@ -203,6 +219,10 @@ export class Game {
     this.hud.showPause();
   }
 
+  collectSandSample({ frames } = {}) {
+    return collectSandSample({ game: this, frames });
+  }
+
   /**
    * Enters targeting mode for Wind Blast
    */
@@ -223,7 +243,7 @@ export class Game {
     let targetObj = targetObject;
     const testObjects = Array.isArray(this.lab.testObjects)
       ? this.lab.testObjects
-      : (this.lab.testObjects?.objects || []);
+      : this.lab.testObjects?.objects || [];
 
     if (!targetObj) {
       // Find closest test object to Wind Child
@@ -291,7 +311,7 @@ export class Game {
     // Visual and physical responses receive the same immutable blast event.
     this.windFX.triggerWindBlast(origin, target, powerLevel, impulse);
     this.wind.applyImpulse(impulse, [targetObject]);
-    
+
     if (this.lab?.gpuSandSystem) {
       this.lab.gpuSandSystem.triggerSandBlast(origin, target, effectivePower);
     }
@@ -317,7 +337,7 @@ export class Game {
       this.player.update(delta, this.lab.colliders, this.lab.doors);
 
       if (this.flashlight && this.player) {
-        const angle = (this.player.model && this.player.model.rotation) ? this.player.model.rotation.y : 0;
+        const angle = this.player.model && this.player.model.rotation ? this.player.model.rotation.y : 0;
         const forward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
         this.flashlight.update(this.player.position, forward);
       }
@@ -346,6 +366,9 @@ export class Game {
     if (this.destroyed) return;
     this.destroyed = true;
     this.isPlaying = false;
+    if (LAB_DEBUG_ENABLED && window.__LAB_DEBUG__?.game === this) {
+      delete window.__LAB_DEBUG__;
+    }
 
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);

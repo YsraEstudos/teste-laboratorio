@@ -1,4 +1,7 @@
 import { getRoomById } from '../world/RoomData.js';
+import { RADIAL_MENU_TOKENS, createDefaultSectors } from './radial/RadialMenuConfig.js';
+import { buildRadialMenuDOM } from './radial/RadialSectorBuilder.js';
+import { RadialMenuInput } from './radial/RadialMenuInput.js';
 
 /**
  * RadialMenu controls the 360-degree context menu for the Wind Child.
@@ -16,251 +19,27 @@ export class RadialMenu {
     this.hoveredSector = null;
     this.activeSectorIndex = 0;
 
-    this.sectors = [
-      {
-        id: 'move-testing',
-        title: 'SALA DE TESTES',
-        icon: '🧭',
-        description: 'Navegar o Wind Child até a Sala de Testes (Z = -54).',
-        action: () => this._moveToTestingRoom(),
-      },
-      {
-        id: 'call-child',
-        title: 'CHARMAR CRIANÇA',
-        icon: '🚶',
-        description: 'Trazer o Wind Child para perto da posição do jogador.',
-        action: () => this._callToPlayer(),
-      },
-      {
-        id: 'power-level',
-        title: 'NÍVEL DE PODER',
-        icon: '⚡',
-        description: 'Ajustar o nível de poder elemental do Wind Child (1 a 10).',
-        hasSubmenu: true,
-        action: (level) => this._setPowerLevel(level),
-      },
-      {
-        id: 'restore-status',
-        title: 'RESTAURAR STATUS',
-        icon: '💚',
-        description: 'Restaurar a Felicidade (100%) e Energia (100%) do Wind Child.',
-        action: () => this._restoreStatus(),
-      },
-      {
-        id: 'wind-blast',
-        title: 'RÁFAGA DE VENTO',
-        icon: '🌀',
-        description: 'Disparar uma potente ráfaga aerodinâmica com efeitos visuais.',
-        action: () => this._triggerWindBlast(),
-      },
-      {
-        id: 'inspect-details',
-        title: 'INSPECIONAR',
-        icon: '📊',
-        description: 'Exibir telemetria completa e diagnóstico do Wind Child.',
-        action: () => this._inspectDetails(),
-      },
-    ];
+    this.sectors = createDefaultSectors(this);
 
     this._createDOM();
+    this.inputHandler = new RadialMenuInput(this);
     this._bindEvents();
   }
 
   _createDOM() {
-    this.container = document.createElement('div');
-    this.container.id = 'radial-menu-container';
-    this.container.className = 'radial-menu-overlay hidden';
-    this.container.setAttribute('role', 'menu');
-    this.container.setAttribute('aria-label', 'Ações da Wind Child');
-    this.container.setAttribute('aria-hidden', 'true');
-
-    const menuWrapper = document.createElement('div');
-    menuWrapper.className = 'radial-menu-wrapper';
-
-    const size = 340;
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-    svg.setAttribute('class', 'radial-svg');
-    this.svg = svg;
-
-    const center = size / 2;
-    const outerR = 155;
-    const innerR = 62;
-    const count = this.sectors.length;
-    const angleStep = (2 * Math.PI) / count;
-
-    this.sectorElements = [];
-
-    this.sectors.forEach((sector, index) => {
-      const startAngle = index * angleStep - Math.PI / 2;
-      const endAngle = (index + 1) * angleStep - Math.PI / 2;
-      const midAngle = (startAngle + endAngle) / 2;
-
-      const x1 = center + outerR * Math.cos(startAngle);
-      const y1 = center + outerR * Math.sin(startAngle);
-      const x2 = center + outerR * Math.cos(endAngle);
-      const y2 = center + outerR * Math.sin(endAngle);
-
-      const x3 = center + innerR * Math.cos(endAngle);
-      const y3 = center + innerR * Math.sin(endAngle);
-      const x4 = center + innerR * Math.cos(startAngle);
-      const y4 = center + innerR * Math.sin(startAngle);
-
-      const largeArc = angleStep > Math.PI ? 1 : 0;
-
-      const pathData = [
-        `M ${x1} ${y1}`,
-        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
-        `L ${x3} ${y3}`,
-        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4}`,
-        'Z',
-      ].join(' ');
-
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('class', 'radial-sector-group');
-      g.setAttribute('data-id', sector.id);
-      g.setAttribute('data-index', index);
-      g.setAttribute('role', 'menuitem');
-      g.setAttribute('aria-label', sector.title);
-      g.setAttribute('tabindex', '-1');
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', pathData);
-      path.setAttribute('class', 'radial-sector-path');
-
-      const labelR = (innerR + outerR) / 2;
-      const iconX = center + labelR * Math.cos(midAngle);
-      const iconY = center + labelR * Math.sin(midAngle);
-
-      const foreignObj = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-      foreignObj.setAttribute('x', iconX - 48);
-      foreignObj.setAttribute('y', iconY - 24);
-      foreignObj.setAttribute('width', 96);
-      foreignObj.setAttribute('height', 48);
-      foreignObj.setAttribute('class', 'radial-label-container');
-
-      const labelDiv = document.createElement('div');
-      labelDiv.className = 'radial-label-content';
-      labelDiv.innerHTML = `
-        <span class="sector-icon">${sector.icon}</span>
-        <span class="sector-title">${sector.title}</span>
-      `;
-      foreignObj.appendChild(labelDiv);
-
-      g.appendChild(path);
-      g.appendChild(foreignObj);
-
-      g.addEventListener('mouseenter', () => this._onSectorHover(sector, g));
-      g.addEventListener('mouseleave', () => this._onSectorLeave(g));
-      g.addEventListener('focus', () => this._setActiveSector(index, false));
-      g.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._setActiveSector(index, false);
-        this._onSectorClick(sector);
-      });
-
-      svg.appendChild(g);
-      this.sectorElements.push({ g, path, sector });
-    });
-
-    const centerCore = document.createElement('div');
-    centerCore.className = 'radial-center-core';
-    centerCore.innerHTML = `
-      <div class="core-avatar">🌀</div>
-      <div class="core-title">WIND CHILD</div>
-      <div class="core-power-badge">PODER <span id="radial-power-val">5</span></div>
-    `;
-
-    this.powerSelector = document.createElement('div');
-    this.powerSelector.className = 'power-selector-ring hidden';
-    let powerHtml = '<div class="power-title">NÍVEL DE PODER (1-10)</div><div class="power-buttons">';
-    for (let i = 1; i <= 10; i++) {
-      powerHtml += `<button class="power-btn" data-level="${i}">${i}</button>`;
-    }
-    powerHtml += '</div>';
-    this.powerSelector.innerHTML = powerHtml;
-
-    this.powerSelector.addEventListener('click', (e) => {
-      const btn = e.target.closest('.power-btn');
-      if (btn) {
-        const lvl = parseInt(btn.dataset.level, 10);
-        this._setPowerLevel(lvl);
-      }
-    });
-
-    this.tooltipPanel = document.createElement('div');
-    this.tooltipPanel.className = 'radial-tooltip-panel';
-    this.tooltipPanel.innerHTML = `
-      <div class="tooltip-header">
-        <span id="tooltip-icon">🌀</span>
-        <span id="tooltip-title">WIND CHILD CONTEXT MENU</span>
-      </div>
-      <div class="tooltip-body" id="tooltip-desc">
-        Passe o mouse sobre os setores para ver as ações disponíveis.
-      </div>
-      <div class="tooltip-stats">
-        <div class="stat-item">
-          <span class="stat-label">Felicidade:</span>
-          <div class="stat-bar"><div class="stat-fill happiness" id="tooltip-hap-bar" style="width: 80%"></div></div>
-          <span class="stat-val" id="tooltip-hap-val">80%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Energia:</span>
-          <div class="stat-bar"><div class="stat-fill energy" id="tooltip-nrg-bar" style="width: 90%"></div></div>
-          <span class="stat-val" id="tooltip-nrg-val">90%</span>
-        </div>
-      </div>
-    `;
-
-    menuWrapper.appendChild(svg);
-    menuWrapper.appendChild(centerCore);
-    menuWrapper.appendChild(this.powerSelector);
-    menuWrapper.appendChild(this.tooltipPanel);
-
-    this.container.appendChild(menuWrapper);
+    const dom = buildRadialMenuDOM(this.sectors, this, RADIAL_MENU_TOKENS);
+    this.container = dom.container;
+    this.svg = dom.svg;
+    this.sectorElements = dom.sectorElements;
+    this.powerSelector = dom.powerSelector;
+    this.tooltipPanel = dom.tooltipPanel;
     document.body.appendChild(this.container);
   }
 
   _bindEvents() {
-    this._onPointerDown = (e) => {
-      if (this.active && !this.container.contains(e.target) && e.button !== 2) {
-        this.hide();
-      }
-    };
-    this._onKeyDown = (e) => {
-      if (!this.active) return;
-
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.hide();
-        return;
-      }
-
-      if (e.target?.closest?.('.power-btn')) return;
-
-      let nextIndex = null;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        nextIndex = this.activeSectorIndex + 1;
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        nextIndex = this.activeSectorIndex - 1;
-      }
-
-      if (nextIndex !== null) {
-        e.preventDefault();
-        e.stopPropagation();
-        this._setActiveSector(nextIndex);
-        return;
-      }
-
-      if (e.key === 'Enter' || e.key === ' ' || e.code === 'Space') {
-        e.preventDefault();
-        e.stopPropagation();
-        this._onSectorClick(this.sectors[this.activeSectorIndex]);
-      }
-    };
-    window.addEventListener('pointerdown', this._onPointerDown);
-    window.addEventListener('keydown', this._onKeyDown, true);
+    this.inputHandler.bindEvents();
+    this._onPointerDown = this.inputHandler.onPointerDown;
+    this._onKeyDown = this.inputHandler.onKeyDown;
   }
 
   destroy() {
@@ -268,8 +47,9 @@ export class RadialMenu {
     this.destroyed = true;
     this.hide();
 
-    if (this._onPointerDown) window.removeEventListener('pointerdown', this._onPointerDown);
-    if (this._onKeyDown) window.removeEventListener('keydown', this._onKeyDown, true);
+    if (this.inputHandler) {
+      this.inputHandler.unbindEvents();
+    }
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
@@ -289,10 +69,12 @@ export class RadialMenu {
     this.position = { x, y };
     this.active = true;
 
-    const menuWidth = 360;
-    const menuHeight = 480;
-    const clampedX = Math.max(menuWidth / 2 + 10, Math.min(window.innerWidth - menuWidth / 2 - 10, x));
-    const clampedY = Math.max(menuHeight / 2 + 10, Math.min(window.innerHeight - menuHeight / 2 - 10, y));
+    const menuWidth = RADIAL_MENU_TOKENS.menuWidth;
+    const menuHeight = RADIAL_MENU_TOKENS.menuHeight;
+    const padding = RADIAL_MENU_TOKENS.viewportPadding;
+
+    const clampedX = Math.max(menuWidth / 2 + padding, Math.min(window.innerWidth - menuWidth / 2 - padding, x));
+    const clampedY = Math.max(menuHeight / 2 + padding, Math.min(window.innerHeight - menuHeight / 2 - padding, y));
 
     this.container.style.left = '0';
     this.container.style.top = '0';

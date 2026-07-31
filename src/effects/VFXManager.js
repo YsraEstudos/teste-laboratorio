@@ -103,11 +103,11 @@ export class VFXManager {
     object3D.traverse((child) => {
       if (child.type === 'ParticleEmitter' && child.system) {
         const sys = child.system;
-        
+
         if (sys._originalBlending === undefined) {
-          sys._originalBlending = sys.blending !== undefined ? sys.blending : (sys.material ? sys.material.blending : 1); // 1 is NormalBlending
+          sys._originalBlending = sys.blending !== undefined ? sys.blending : sys.material ? sys.material.blending : 1; // 1 is NormalBlending
         }
-        
+
         if (disableFlashes) {
           if (sys.blending === 2) sys.blending = 1; // 2 is AdditiveBlending
           if (sys.material && sys.material.blending === 2) sys.material.blending = 1;
@@ -121,7 +121,7 @@ export class VFXManager {
             sys._originalBehaviors = [...sys.behaviors];
           }
           if (disableFlashes) {
-            sys.behaviors = sys._originalBehaviors.filter(b => {
+            sys.behaviors = sys._originalBehaviors.filter((b) => {
               const name = b.type || b.constructor.name;
               return !name.includes('Turbulence') && !name.includes('Noise') && !name.includes('Flash');
             });
@@ -138,7 +138,7 @@ export class VFXManager {
       const roomId = effect.userData.roomId;
       if (roomId !== null && roomId !== undefined) {
         const isVisible = activeRoomIds.includes(roomId);
-        
+
         effect.traverse((child) => {
           if (child.type === 'ParticleEmitter') {
             const system = child.system;

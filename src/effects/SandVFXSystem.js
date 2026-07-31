@@ -87,10 +87,7 @@ export class SandVFXSystem {
         startLife: new IntervalValue(3.0, 5.5),
         startSpeed: new IntervalValue(0.2, 0.8),
         startSize: new IntervalValue(0.08, 0.22),
-        startColor: new ColorRange(
-          new Vector4(1.0, 0.9, 0.65, 0.8),
-          new Vector4(0.9, 0.75, 0.45, 0.6)
-        ),
+        startColor: new ColorRange(new Vector4(1.0, 0.9, 0.65, 0.8), new Vector4(0.9, 0.75, 0.45, 0.6)),
         emissionOverTime: new ConstantValue(35),
         shape: new RectangleEmitter({
           width: 22.0,
@@ -106,13 +103,14 @@ export class SandVFXSystem {
 
       // Size fade & color over lifetime
       ambientSystem.behaviors.push(
-        new SizeOverLife(new PiecewiseBezier([[new ConstantValue(0.4), 0], [new ConstantValue(1.0), 0.5], [new ConstantValue(0.1), 1]])),
-        new ColorOverLife(
-          new ColorRange(
-            new Vector4(1.0, 0.88, 0.6, 0.0),
-            new Vector4(0.95, 0.75, 0.4, 0.85)
-          )
-        )
+        new SizeOverLife(
+          new PiecewiseBezier([
+            [new ConstantValue(0.4), 0],
+            [new ConstantValue(1.0), 0.5],
+            [new ConstantValue(0.1), 1],
+          ]),
+        ),
+        new ColorOverLife(new ColorRange(new Vector4(1.0, 0.88, 0.6, 0.0), new Vector4(0.95, 0.75, 0.4, 0.85))),
       );
 
       this.ambientEmitter = new ParticleEmitter(ambientSystem);
@@ -130,7 +128,7 @@ export class SandVFXSystem {
 
   /**
    * Emits footstep sand puffs when walking in the Sand Arena
-   * @param {THREE.Vector3} position 
+   * @param {THREE.Vector3} position
    */
   triggerSandFootstep(position) {
     if (this.disposed || !this.vfxManager?.batchRenderer) return;
@@ -142,10 +140,7 @@ export class SandVFXSystem {
         startLife: new IntervalValue(0.5, 0.9),
         startSpeed: new IntervalValue(0.6, 1.4),
         startSize: new IntervalValue(0.12, 0.32),
-        startColor: new ColorRange(
-          new Vector4(1.0, 0.85, 0.5, 0.9),
-          new Vector4(0.85, 0.65, 0.3, 0.5)
-        ),
+        startColor: new ColorRange(new Vector4(1.0, 0.85, 0.5, 0.9), new Vector4(0.85, 0.65, 0.3, 0.5)),
         emissionOverTime: new ConstantValue(0),
         emissionBursts: [
           {
@@ -166,13 +161,14 @@ export class SandVFXSystem {
       });
 
       footstepSystem.behaviors.push(
-        new SizeOverLife(new PiecewiseBezier([[new ConstantValue(0.5), 0], [new ConstantValue(1.2), 0.4], [new ConstantValue(0.0), 1]])),
-        new ColorOverLife(
-          new ColorRange(
-            new Vector4(1.0, 0.9, 0.6, 0.9),
-            new Vector4(0.8, 0.55, 0.25, 0.0)
-          )
-        )
+        new SizeOverLife(
+          new PiecewiseBezier([
+            [new ConstantValue(0.5), 0],
+            [new ConstantValue(1.2), 0.4],
+            [new ConstantValue(0.0), 1],
+          ]),
+        ),
+        new ColorOverLife(new ColorRange(new Vector4(1.0, 0.9, 0.6, 0.9), new Vector4(0.8, 0.55, 0.25, 0.0))),
       );
 
       const emitter = new ParticleEmitter(footstepSystem);
@@ -202,9 +198,9 @@ export class SandVFXSystem {
 
   /**
    * Triggers dynamic three.quarks sand storm wave & plume explosion upon Wind Blast
-   * @param {THREE.Vector3} origin 
-   * @param {THREE.Vector3} target 
-   * @param {number} powerLevel 
+   * @param {THREE.Vector3} origin
+   * @param {THREE.Vector3} target
+   * @param {number} powerLevel
    */
   triggerSandBlast(origin, target, powerLevel = 1) {
     if (this.disposed || !this.vfxManager?.batchRenderer) return;
@@ -217,10 +213,7 @@ export class SandVFXSystem {
         startLife: new IntervalValue(0.8, 1.8),
         startSpeed: new IntervalValue(3.0 + powerLevel * 0.8, 7.0 + powerLevel * 1.5),
         startSize: new IntervalValue(0.18, 0.45),
-        startColor: new ColorRange(
-          new Vector4(1.0, 0.92, 0.65, 1.0),
-          new Vector4(0.9, 0.7, 0.35, 0.7)
-        ),
+        startColor: new ColorRange(new Vector4(1.0, 0.92, 0.65, 1.0), new Vector4(0.9, 0.7, 0.35, 0.7)),
         emissionOverTime: new ConstantValue(0),
         emissionBursts: [
           {
@@ -241,13 +234,14 @@ export class SandVFXSystem {
       });
 
       blastSystem.behaviors.push(
-        new SizeOverLife(new PiecewiseBezier([[new ConstantValue(0.6), 0], [new ConstantValue(2.0), 0.3], [new ConstantValue(0.0), 1]])),
-        new ColorOverLife(
-          new ColorRange(
-            new Vector4(1.0, 0.95, 0.7, 1.0),
-            new Vector4(0.75, 0.5, 0.2, 0.0)
-          )
-        )
+        new SizeOverLife(
+          new PiecewiseBezier([
+            [new ConstantValue(0.6), 0],
+            [new ConstantValue(2.0), 0.3],
+            [new ConstantValue(0.0), 1],
+          ]),
+        ),
+        new ColorOverLife(new ColorRange(new Vector4(1.0, 0.95, 0.7, 1.0), new Vector4(0.75, 0.5, 0.2, 0.0))),
       );
 
       const emitter = new ParticleEmitter(blastSystem);
@@ -290,9 +284,9 @@ export class SandVFXSystem {
 
   /**
    * Frame update - Checks character movement in Sand Arena bounds for footstep effects
-   * @param {number} delta 
-   * @param {THREE.Vector3|{x:number,y:number,z:number}} [playerPos] 
-   * @param {THREE.Vector3|{x:number,y:number,z:number}} [windChildPos] 
+   * @param {number} delta
+   * @param {THREE.Vector3|{x:number,y:number,z:number}} [playerPos]
+   * @param {THREE.Vector3|{x:number,y:number,z:number}} [windChildPos]
    */
   update(delta, playerPos = null, windChildPos = null) {
     if (this.disposed) return;

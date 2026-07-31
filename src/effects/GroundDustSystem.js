@@ -56,7 +56,7 @@ export class GroundDustSystem {
 
   /**
    * Called when a Wind Blast is released to lift ground dust into a 3D swirling cloud.
-   * 
+   *
    * @param {THREE.Vector3} origin Blast origin
    * @param {THREE.Vector3} direction Blast direction
    * @param {number} power Blast power

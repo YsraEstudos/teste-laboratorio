@@ -89,9 +89,8 @@ export class FlashlightSystem {
     this.beamMesh.position.copy(origin);
 
     // Ajusta o destino do SpotLight
-    const forward = targetDir && targetDir.lengthSq() > 0.001 
-      ? targetDir.clone().normalize() 
-      : new THREE.Vector3(0, 0, -1);
+    const forward =
+      targetDir && targetDir.lengthSq() > 0.001 ? targetDir.clone().normalize() : new THREE.Vector3(0, 0, -1);
 
     const dest = origin.clone().add(forward.clone().multiplyScalar(20));
     this.target.position.copy(dest);

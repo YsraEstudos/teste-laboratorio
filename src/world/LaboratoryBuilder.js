@@ -9,7 +9,7 @@ import { GPUComputeSandSystem } from './GPUComputeSandSystem.js';
 const MAX_REAL_AREA_LIGHTS = 8;
 
 export class LaboratoryBuilder {
-  constructor(scene) {
+  constructor(scene, renderer = null) {
     this.scene = scene;
     this.root = new THREE.Group();
     this.ownedGeometries = new Set();
@@ -28,7 +28,7 @@ export class LaboratoryBuilder {
     this.testObjectSystem = new TestObjectSystem();
     this.testObjects = this.testObjectSystem.objects;
     this.time = 0;
-    this.sandTerrainSystem = new SandTerrainSystem(this.root);
+    this.sandTerrainSystem = new SandTerrainSystem(this.root, { renderer });
     this.gpuSandSystem = new GPUComputeSandSystem(this.scene);
 
     this._boxBuffers = new Map();
@@ -46,7 +46,7 @@ export class LaboratoryBuilder {
     this.dynamicColliders = this.doorSystem.getDynamicColliders();
     this.navigationColliders = [...this.colliders, ...this.dynamicColliders];
     this.rooms = ROOMS;
-    
+
     // Tracking for footprints
     this.lastFootprintPositions = new Map();
   }
@@ -95,22 +95,7 @@ export class LaboratoryBuilder {
     const metalTexture = TextureGenerator.createMetalTexture();
     const panelTexture = TextureGenerator.createEmissivePanelTexture();
     const waterTexture = TextureGenerator.createWaterTexture();
-    const sandTexture = TextureGenerator.createAdvancedSandAlbedoMap();
-    const sandNormal = TextureGenerator.createAdvancedSandNormalMap();
-    const sandRoughness = TextureGenerator.createAdvancedSandRoughnessMap();
-
     this.materials = {
-      sand: new THREE.MeshStandardMaterial({
-        map: this._cloneTexture(sandTexture, 6, 5),
-        normalMap: this._cloneTexture(sandNormal, 6, 5),
-        roughnessMap: this._cloneTexture(sandRoughness, 6, 5),
-        color: 0xdfb97a,
-        roughness: 0.88,
-        metalness: 0.05,
-        polygonOffset: true,
-        polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2,
-      }),
       floor: new THREE.MeshStandardMaterial({
         map: this._cloneTexture(floorTexture, 7, 5),
         color: 0xb4c6cc,
@@ -305,7 +290,14 @@ export class LaboratoryBuilder {
     if (!this._boxBuffers) this._boxBuffers = new Map();
     if (!this._boxBuffers.has(material)) this._boxBuffers.set(material, []);
     this._boxBuffers.get(material).push({
-      width, height, depth, x, y, z, rotationY, collider,
+      width,
+      height,
+      depth,
+      x,
+      y,
+      z,
+      rotationY,
+      collider,
     });
 
     if (collider) {
@@ -315,10 +307,7 @@ export class LaboratoryBuilder {
         dummy.scale.set(width, height, depth);
         dummy.rotation.y = rotationY;
         dummy.updateMatrix();
-        const bbox = new THREE.Box3(
-          new THREE.Vector3(-0.5, -0.5, -0.5),
-          new THREE.Vector3(0.5, 0.5, 0.5),
-        );
+        const bbox = new THREE.Box3(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5));
         bbox.applyMatrix4(dummy.matrix);
         this.colliders.push(bbox);
       } else {
@@ -328,9 +317,7 @@ export class LaboratoryBuilder {
         const maxY = y + height / 2;
         const minZ = z - depth / 2;
         const maxZ = z + depth / 2;
-        this.colliders.push(
-          new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)),
-        );
+        this.colliders.push(new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)));
       }
     }
     return null;
@@ -394,7 +381,7 @@ export class LaboratoryBuilder {
 
   _addLightPanel(x, z, width = 2.1, depth = 0.48, color = 0xffefd0, intensity = 4.5) {
     const panel = this._addBox(width, 0.06, depth, x, 4.02, z, this.materials.panel, false);
-    
+
     // Mantém apenas um conjunto pequeno de luzes reais; os painéis continuam emissivos.
     if (this.realAreaLightCount < MAX_REAL_AREA_LIGHTS) {
       const rectLight = new THREE.RectAreaLight(color, intensity, width, depth);
@@ -1207,8 +1194,6 @@ export class LaboratoryBuilder {
     this._addPointLight(0, 3.8, -55, 0xffb74d, 12, 22);
   }
 
-
-
   _buildAtmosphere() {
     const emblem = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.06, 8, 48), this.materials.cyan);
     emblem.rotation.x = Math.PI / 2;
@@ -1250,10 +1235,10 @@ export class LaboratoryBuilder {
     }
 
     this.sandTerrainSystem.update(delta, this.time, playerPos, additionalPositions);
-    
+
     const windChildPos = additionalPositions.length > 0 ? additionalPositions[0] : null;
     this.gpuSandSystem.update(delta, this.time, playerPos, windChildPos);
-    
+
     this.testObjectSystem.update(delta, windSystem, this.sandTerrainSystem);
 
     if (playerPos) {
@@ -1265,7 +1250,7 @@ export class LaboratoryBuilder {
       for (const { id, pos } of positionsToTrack) {
         if (pos.z >= -64 && pos.z <= -46 && pos.x >= -12 && pos.x <= 12) {
           const lastPos = this.lastFootprintPositions.get(id);
-          
+
           if (!lastPos || lastPos.distanceTo(pos) > 0.35) {
             this.sandTerrainSystem.addFootprint(pos.x, pos.z, 0.35, 0.12);
             if (sandVFX) {

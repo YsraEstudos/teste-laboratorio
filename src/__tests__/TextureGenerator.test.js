@@ -7,6 +7,13 @@ const drawingContext = {
   fillRect: vi.fn(),
   strokeRect: vi.fn(),
   fillText: vi.fn(),
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  stroke: vi.fn(),
+  save: vi.fn(),
+  restore: vi.fn(),
+  createLinearGradient: () => ({ addColorStop: vi.fn() }),
 };
 
 beforeEach(() => {
@@ -60,5 +67,50 @@ describe('TextureGenerator.createSignageTexture', () => {
 
     expect(disposeEntrance).toHaveBeenCalledOnce();
     expect(disposeExit).toHaveBeenCalledOnce();
+  });
+});
+
+describe('TextureGenerator.acquireSandTextureSet', () => {
+  it('shares maps and disposes them after the last consumer releases', () => {
+    const first = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const second = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const disposeAlbedo = vi.spyOn(first.albedo, 'dispose');
+    const disposeNormal = vi.spyOn(first.normal, 'dispose');
+    const disposeRoughness = vi.spyOn(first.roughness, 'dispose');
+
+    expect(second.albedo).toBe(first.albedo);
+    expect(second.normal).toBe(first.normal);
+    expect(second.roughness).toBe(first.roughness);
+
+    first.release();
+    expect(disposeAlbedo).not.toHaveBeenCalled();
+
+    second.release();
+    expect(disposeAlbedo).toHaveBeenCalledOnce();
+    expect(disposeNormal).toHaveBeenCalledOnce();
+    expect(disposeRoughness).toHaveBeenCalledOnce();
+  });
+
+  it('keeps referenced sand maps alive when clearing the regular texture cache', () => {
+    const first = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const disposeAlbedo = vi.spyOn(first.albedo, 'dispose');
+
+    TextureGenerator.clearCache();
+
+    expect(disposeAlbedo).not.toHaveBeenCalled();
+    const second = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    expect(second.albedo).toBe(first.albedo);
+
+    first.release();
+    second.release();
+    expect(disposeAlbedo).toHaveBeenCalledOnce();
+  });
+
+  it('gera mapas de areia com seed determinística sem Math.random por grão', () => {
+    const random = vi.spyOn(Math, 'random');
+    const handle = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+
+    expect(random.mock.calls.length).toBeLessThan(100);
+    handle.release();
   });
 });

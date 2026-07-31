@@ -425,7 +425,7 @@ export class PerformanceProfiler {
           </div>
           <div class="reason-desc">${d.desc}</div>
         </div>
-      `
+      `,
         )
         .join('');
     }
@@ -473,7 +473,8 @@ export class PerformanceProfiler {
       elGcStatus.textContent = ratio > 0.85 ? 'Atenção (Heap Cheio)' : 'Excelente (Sem vazamento)';
     }
 
-    if (elBrowser) elBrowser.textContent = navigator.userAgent.includes('Edg') ? 'Microsoft Edge (Chromium)' : 'Navegador Chromium';
+    if (elBrowser)
+      elBrowser.textContent = navigator.userAgent.includes('Edg') ? 'Microsoft Edge (Chromium)' : 'Navegador Chromium';
     if (elWebglVer) elWebglVer.textContent = 'WebGL 2.0 (High Precision)';
     if (elScreenRes) elScreenRes.textContent = `${window.innerWidth}x${window.innerHeight}`;
     if (elPixelRatio) elPixelRatio.textContent = `${window.devicePixelRatio || 1}x`;
@@ -653,9 +654,11 @@ export class PerformanceProfiler {
       const x = i * barW;
       const y = h - barHeight;
 
-      if (ft <= 9.1) { // >= ~110 FPS
+      if (ft <= 9.1) {
+        // >= ~110 FPS
         ctx.fillStyle = '#54f08c';
-      } else if (ft <= 16.7) { // >= 60 FPS
+      } else if (ft <= 16.7) {
+        // >= 60 FPS
         ctx.fillStyle = '#ffd36d';
       } else {
         ctx.fillStyle = '#f07170';
