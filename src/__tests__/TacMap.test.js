@@ -50,6 +50,7 @@ const context = {
   stroke: vi.fn(),
   save: vi.fn(),
   translate: vi.fn(),
+  rotate: vi.fn(),
   arc: vi.fn(),
   fill: vi.fn(),
   restore: vi.fn(),
@@ -138,5 +139,24 @@ describe('TacMap lifecycle', () => {
 
     expect(requestAnimationFrame).toHaveBeenCalledOnce();
     expect(animationFrames.size).toBe(0);
+  });
+
+  it('removes unused legacy methods _isEntityInRoom, _getRoomCanvasBounds, _worldToCanvas', () => {
+    const tacMap = new TacMap({});
+    expect(tacMap._isEntityInRoom).toBeUndefined();
+    expect(tacMap._getRoomCanvasBounds).toBeUndefined();
+    expect(tacMap._worldToCanvas).toBeUndefined();
+    tacMap.destroy();
+  });
+
+  it('sets textBaseline explicitly in TacMapRenderer.drawEntities', () => {
+    const tacMap = new TacMap({
+      player: { position: { x: 0, z: 0 } },
+      windChild: { position: { x: 5, z: 5 } },
+    });
+
+    tacMap.renderer.drawEntities(context, tacMap.layout, 920, 680, tacMap.game, 0);
+    expect(context.textBaseline).toBe('middle');
+    tacMap.destroy();
   });
 });

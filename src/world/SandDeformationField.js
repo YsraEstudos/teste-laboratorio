@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { SandDeformationSimulation } from './SandDeformationSimulation.js';
 import { SAND_BOUNDS, isFiniteSandBrush } from './SandBounds.js';
 
-const MAX_RELAX_STEP = 1 / 15;
+const MAX_RELAX_STEP = 1;
 const TILE_SIZE = 16;
 const BRUSH_STRIDE = 9;
 const DEFAULT_MAX_BRUSHES = 96;
@@ -73,10 +73,23 @@ export class SandDeformationField {
 
     this.backend = 'cpuR8';
     this.simulation = null;
-    const supportsFloatTargets = !renderer?.extensions || renderer.extensions.has?.('EXT_color_buffer_float');
+    const supportsFloatTargets =
+      !renderer?.extensions ||
+      renderer.extensions.has?.('EXT_color_buffer_float') ||
+      renderer.extensions.has?.('EXT_color_buffer_half_float');
     if (experimentalGpu && renderer?.capabilities?.isWebGL2 && supportsFloatTargets && this.width === this.height) {
       this.backend = 'gpuPingPong';
-      this.simulation = new SandDeformationSimulation({ renderer, scene, resolution: this.width });
+      this.simulation = new SandDeformationSimulation({
+        renderer,
+        scene,
+        resolution: this.width,
+        minX: this.minX,
+        maxX: this.maxX,
+        minZ: this.minZ,
+        maxZ: this.maxZ,
+        maxDepth: this.maxDepth,
+        decayPerSecond: this.decayPerSecond,
+      });
       this.texture = this.simulation.publishedTarget.texture;
     }
 
@@ -139,8 +152,7 @@ export class SandDeformationField {
       radius <= 0 ||
       depth < 0 ||
       berm < 0 ||
-      elongation <= 0 ||
-      !this._containsPoint(x, z)
+      elongation <= 0
     ) {
       this.stats.droppedBrushes += 1;
       return false;
@@ -179,10 +191,19 @@ export class SandDeformationField {
     const worldHeight = this.maxZ - this.minZ;
     const radiusX = radius * Math.max(elongation, 0.1);
     const radiusZ = radius;
-    const minPx = clamp(Math.floor(((x - radiusX - this.minX) / worldWidth) * this.width), 0, this.width - 1);
-    const maxPx = clamp(Math.ceil(((x + radiusX - this.minX) / worldWidth) * this.width), 0, this.width - 1);
-    const minPy = clamp(Math.floor(((z - radiusZ - this.minZ) / worldHeight) * this.height), 0, this.height - 1);
-    const maxPy = clamp(Math.ceil(((z + radiusZ - this.minZ) / worldHeight) * this.height), 0, this.height - 1);
+    const unclampedMinPx = Math.floor(((x - radiusX - this.minX) / worldWidth) * (this.width - 1));
+    const unclampedMaxPx = Math.ceil(((x + radiusX - this.minX) / worldWidth) * (this.width - 1));
+    const unclampedMinPy = Math.floor(((z - radiusZ - this.minZ) / worldHeight) * (this.height - 1));
+    const unclampedMaxPy = Math.ceil(((z + radiusZ - this.minZ) / worldHeight) * (this.height - 1));
+
+    if (unclampedMaxPx < 0 || unclampedMinPx >= this.width || unclampedMaxPy < 0 || unclampedMinPy >= this.height) {
+      return false;
+    }
+
+    const minPx = clamp(unclampedMinPx, 0, this.width - 1);
+    const maxPx = clamp(unclampedMaxPx, 0, this.width - 1);
+    const minPy = clamp(unclampedMinPy, 0, this.height - 1);
+    const maxPy = clamp(unclampedMaxPy, 0, this.height - 1);
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
     const edgePower = 1 + clamp(edge, 0, 1);
@@ -225,24 +246,22 @@ export class SandDeformationField {
         }
       }
     }
-    const centerIndex = this.toIndex(x, z);
-    if (centerIndex >= 0) {
-      const centerPx = Math.round(((x - this.minX) / worldWidth) * (this.width - 1));
-      const centerPy = Math.round(((z - this.minZ) / worldHeight) * (this.height - 1));
-      const centerDepth = Math.round(clamp(depth / this.maxDepth, 0, 1) * 255);
-      const centerBerm = Math.round(clamp(berm / this.maxDepth, 0, 1) * 255);
-      const centerCompression = Math.round(clamp(compression, 0, 1) * 255);
-      if (
-        centerDepth > this.data[centerIndex] ||
-        centerBerm > this.bermData[centerIndex] ||
-        centerCompression > this.compressionData[centerIndex]
-      ) {
-        this.data[centerIndex] = Math.max(this.data[centerIndex], centerDepth);
-        this.bermData[centerIndex] = Math.max(this.bermData[centerIndex], centerBerm);
-        this.compressionData[centerIndex] = Math.max(this.compressionData[centerIndex], centerCompression);
-        this._markActiveTile(centerPx, centerPy);
-        changed = true;
-      }
+    const centerPx = clamp(Math.round(((x - this.minX) / worldWidth) * (this.width - 1)), 0, this.width - 1);
+    const centerPy = clamp(Math.round(((z - this.minZ) / worldHeight) * (this.height - 1)), 0, this.height - 1);
+    const centerIndex = centerPy * this.width + centerPx;
+    const centerDepth = Math.round(clamp(depth / this.maxDepth, 0, 1) * 255);
+    const centerBerm = Math.round(clamp(berm / this.maxDepth, 0, 1) * 255);
+    const centerCompression = Math.round(clamp(compression, 0, 1) * 255);
+    if (
+      centerDepth > this.data[centerIndex] ||
+      centerBerm > this.bermData[centerIndex] ||
+      centerCompression > this.compressionData[centerIndex]
+    ) {
+      this.data[centerIndex] = Math.max(this.data[centerIndex], centerDepth);
+      this.bermData[centerIndex] = Math.max(this.bermData[centerIndex], centerBerm);
+      this.compressionData[centerIndex] = Math.max(this.compressionData[centerIndex], centerCompression);
+      this._markActiveTile(centerPx, centerPy);
+      changed = true;
     }
     this.pendingDirty ||= changed;
     return changed;
@@ -256,7 +275,7 @@ export class SandDeformationField {
     }
   }
 
-  _decayTile(tileX, tileY, multiplier) {
+  _decayTile(tileX, tileY, stepFraction) {
     const startX = tileX * TILE_SIZE;
     const startY = tileY * TILE_SIZE;
     const endX = Math.min(startX + TILE_SIZE, this.width);
@@ -267,9 +286,18 @@ export class SandDeformationField {
     for (let py = startY; py < endY; py += 1) {
       for (let px = startX; px < endX; px += 1) {
         const index = py * this.width + px;
-        const depth = Math.floor(this.data[index] * multiplier);
-        const berm = Math.floor(this.bermData[index] * multiplier);
-        const compression = Math.floor(this.compressionData[index] * multiplier);
+        // Quantized proportional decay. A plain multiplier floors to a
+        // constant -1 per step (full marks erased in ~17 s regardless of
+        // decayPerSecond). Instead, subtract a per-cell amount proportional
+        // to the current value, never dropping below 1 level per step, so
+        // deep marks persist for ~1-2 minutes and shallow ones fade quickly.
+        const depthLoss = Math.max(1, Math.round(stepFraction * this.data[index]));
+        const bermLoss = Math.max(1, Math.round(stepFraction * this.bermData[index]));
+        const compressionLoss = Math.max(1, Math.round(stepFraction * this.compressionData[index]));
+        const depth = this.data[index] > depthLoss ? this.data[index] - depthLoss : 0;
+        const berm = this.bermData[index] > bermLoss ? this.bermData[index] - bermLoss : 0;
+        const compression =
+          this.compressionData[index] > compressionLoss ? this.compressionData[index] - compressionLoss : 0;
         if (
           depth !== this.data[index] ||
           berm !== this.bermData[index] ||
@@ -298,13 +326,18 @@ export class SandDeformationField {
     if (this.stats.activeTiles === 0 || this.decayPerSecond <= 0) return false;
     this.decayAccumulator += delta;
     let changed = false;
+    const stepFraction = this.decayPerSecond * MAX_RELAX_STEP;
     while (this.decayAccumulator >= MAX_RELAX_STEP) {
       this.decayAccumulator -= MAX_RELAX_STEP;
-      const multiplier = Math.max(0, 1 - this.decayPerSecond * MAX_RELAX_STEP);
       for (let tileY = 0; tileY < this.tilesY; tileY += 1) {
         for (let tileX = 0; tileX < this.tilesX; tileX += 1) {
           const tileIndex = tileY * this.tilesX + tileX;
-          if (this.activeTileFlags[tileIndex]) changed ||= this._decayTile(tileX, tileY, multiplier);
+          if (this.activeTileFlags[tileIndex]) {
+            // NOTE: do not use `changed ||= this._decayTile(...)` — that
+            // short-circuits and skips every tile after the first change,
+            // leaving the deepest part of a multi-tile footprint untouched.
+            changed = this._decayTile(tileX, tileY, stepFraction) || changed;
+          }
         }
       }
     }
@@ -317,7 +350,10 @@ export class SandDeformationField {
     const hadBrushes = this.brushCount > 0;
     this.brushCount = 0;
     const relaxed = Number.isFinite(delta) && delta > 0 ? this._relax(delta) : false;
-    if (this.simulation && (hadBrushes || relaxed)) this.simulation.update(Math.max(delta, MAX_RELAX_STEP));
+    if (this.simulation && (hadBrushes || relaxed)) {
+      this.simulation.update(Math.max(delta, MAX_RELAX_STEP));
+      this.texture = this.simulation.publishedTarget.texture;
+    }
     if (hadBrushes || relaxed || this.pendingDirty) this.dirty = true;
     this.pendingDirty = false;
     return hadBrushes || relaxed;
@@ -444,7 +480,6 @@ export class SandDeformationField {
     if (this.disposed) return;
     this.disposed = true;
     if (this.simulation) {
-      this.texture.dispose();
       this.simulation.dispose();
     }
     this.cpuTexture.dispose();

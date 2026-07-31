@@ -7,6 +7,13 @@ const drawingContext = {
   fillRect: vi.fn(),
   strokeRect: vi.fn(),
   fillText: vi.fn(),
+  beginPath: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  stroke: vi.fn(),
+  save: vi.fn(),
+  restore: vi.fn(),
+  createLinearGradient: () => ({ addColorStop: vi.fn() }),
 };
 
 beforeEach(() => {
@@ -97,5 +104,13 @@ describe('TextureGenerator.acquireSandTextureSet', () => {
     first.release();
     second.release();
     expect(disposeAlbedo).toHaveBeenCalledOnce();
+  });
+
+  it('gera mapas de areia com seed determinística sem Math.random por grão', () => {
+    const random = vi.spyOn(Math, 'random');
+    const handle = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+
+    expect(random.mock.calls.length).toBeLessThan(100);
+    handle.release();
   });
 });

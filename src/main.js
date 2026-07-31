@@ -22,6 +22,8 @@ import { SandVFXSystem } from './effects/SandVFXSystem.js';
 import { GroundDustSystem } from './effects/GroundDustSystem.js';
 import { collectSandSample } from './engine/PerformanceStats.js';
 import { isLabDebugEnabled } from './engine/LabDebug.js';
+import { loadSettings } from './config/GameSettings.js';
+import { mountReactApp } from './ui/mountReactApp.js';
 
 const LAB_DEBUG_ENABLED = isLabDebugEnabled({
   isDevelopmentOrTest: import.meta.env.DEV || import.meta.env.MODE === 'e2e',
@@ -44,11 +46,16 @@ export class Game {
     this._pointer = new THREE.Vector2();
     this._raycaster = new THREE.Raycaster();
 
+    // Settings are loaded before any world system is created: quality only
+    // applies on this boot, while the FPS visibility applies immediately.
+    const settings = loadSettings();
+
     // Performance Telemetry Profiler (Edge & AMD GPU/CPU)
     this.profiler = new PerformanceProfiler(this);
+    this.profiler.setVisible?.(settings.showFps);
 
     // World & Navigation
-    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer);
+    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer, { quality: settings.quality });
     if (LAB_DEBUG_ENABLED) {
       window.__LAB_DEBUG__ = {
         game: this,
@@ -60,7 +67,7 @@ export class Game {
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
     this.vfxManager = new VFXManager(this.renderer.scene);
-    this.sandVFX = new SandVFXSystem(this.renderer.scene, this.vfxManager, { quality: 'high' });
+    this.sandVFX = new SandVFXSystem(this.renderer.scene, this.vfxManager, { quality: settings.quality });
     this.lab.setSandVFX?.(this.sandVFX);
     this.groundDust = new GroundDustSystem(this.renderer.scene, this.vfxManager);
 
@@ -85,10 +92,28 @@ export class Game {
       gameStore.setState({ isFlashlightOn: nextState });
     };
 
+    let settingsWasOpen = false;
+    let wasPlayingBeforeSettings = false;
     this._unsubscribeStore = gameStore.subscribe((state) => {
       if (this.flashlight) {
         this.flashlight.setEquipped(state.isFlashlightEquipped);
         this.flashlight.setEnabled(state.isFlashlightOn);
+      }
+
+      // Settings panel pause/resume: opening pauses a running session and
+      // closing it resumes ONLY a session that was running before opening.
+      if (state.settingsOpen && !settingsWasOpen) {
+        wasPlayingBeforeSettings = this.isPlaying;
+        if (this.isPlaying) this.pause();
+      } else if (!state.settingsOpen && settingsWasOpen) {
+        if (wasPlayingBeforeSettings) this.resume();
+        wasPlayingBeforeSettings = false;
+      }
+      settingsWasOpen = state.settingsOpen;
+
+      // FPS visibility is applied immediately.
+      if (typeof state.showFps === 'boolean') {
+        this.profiler?.setVisible?.(state.showFps);
       }
     });
 
@@ -101,6 +126,8 @@ export class Game {
     this.windChild.position.set(3.2, 0, 4.5);
     if (this.windChild.model) this.windChild.model.position.copy(this.windChild.position);
     this._sandAdditionalPositions = [this.windChild.position];
+    // Persistent (allocation-free) bundle consumed by the footstep dispatch.
+    this._sandActors = { player: this.player, windChild: this.windChild };
     this.windAbility = new WindAbilitySystem({
       owner: this.windChild,
       onRelease: (snapshot) => this._applyWindBlast(snapshot),
@@ -358,7 +385,7 @@ export class Game {
       this.sandVFX?.update?.(delta);
       this.groundDust?.update?.(delta);
       this.objectHighlight.update(delta);
-      this.lab.update(delta, this.player.position, this._sandAdditionalPositions, this.wind);
+      this.lab.update(delta, this.player.position, this._sandAdditionalPositions, this.wind, this._sandActors);
       this.hud.update(delta);
       this.profiler.endCPU();
     }
@@ -412,6 +439,7 @@ export class Game {
 
 function init() {
   new Game();
+  mountReactApp();
 }
 
 if (document.readyState === 'loading') {

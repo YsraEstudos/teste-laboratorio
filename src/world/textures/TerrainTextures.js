@@ -1,4 +1,4 @@
-import { _texture, _sandTexture } from './TextureUtils.js';
+import { _texture } from './TextureUtils.js';
 import { _noise, _seededRandom, _seededNoise } from './NoiseUtils.js';
 
 export function createConcreteTexture() {
@@ -53,14 +53,24 @@ export function createBarkTexture() {
 }
 
 export function createSandColorTexture(mapResolution) {
-  return _sandTexture(mapResolution, mapResolution, (ctx, width, height) => {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, '#e0ba7d');
-    gradient.addColorStop(0.5, '#e8c48a');
-    gradient.addColorStop(1, '#c69d60');
-
-    ctx.fillStyle = gradient;
+  return _texture(mapResolution, mapResolution, (ctx, width, height) => {
+    // Base uniforme (o gradiente diagonal anterior não fechava na emenda do
+    // tile e produzia uma grade visível de quadrados com repeat 8x6).
+    ctx.fillStyle = '#dfb87e';
     ctx.fillRect(0, 0, width, height);
+
+    // Sheen horizontal sutil e contínuo: periódico em Y e uniforme em X, então
+    // fecha perfeitamente nas emendas (repeat 8x6 na arena).
+    const cycles = 3;
+    for (let y = 0; y < height; y += 2) {
+      const wave = Math.sin((y / height) * Math.PI * 2 * cycles);
+      if (wave >= 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${(wave * 0.045).toFixed(4)})`;
+      } else {
+        ctx.fillStyle = `rgba(90, 60, 25, ${(-wave * 0.045).toFixed(4)})`;
+      }
+      ctx.fillRect(0, y, width, 2);
+    }
 
     _seededNoise(
       ctx,
@@ -75,19 +85,25 @@ export function createSandColorTexture(mapResolution) {
 }
 
 export function createSandNormalTexture(mapResolution) {
-  return _sandTexture(
+  return _texture(
     mapResolution,
     mapResolution,
     (ctx, width, height) => {
       ctx.fillStyle = '#8080ff';
       ctx.fillRect(0, 0, width, height);
 
+      // Ondas senoidais com frequências múltiplas inteiras de 2π por tile:
+      // o padrão fecha exatamente na emenda (repeat 8x6), sem costura visível.
+      const freqX = (Math.PI * 2 * 4) / width;
+      const freqY = (Math.PI * 2 * 4) / height;
+      const stride = height / 16;
+
       ctx.strokeStyle = 'rgba(140, 150, 255, 0.12)';
       ctx.lineWidth = 6;
-      for (let y = -20; y < height + 40; y += 24) {
+      for (let y = -stride; y < height; y += stride) {
         ctx.beginPath();
         for (let x = -20; x <= width + 20; x += 12) {
-          const offset = Math.sin(x * 0.05 + y * 0.08) * 8;
+          const offset = Math.sin(x * freqX + y * freqY) * 8;
           if (x === -20) ctx.moveTo(x, y + offset);
           else ctx.lineTo(x, y + offset);
         }
@@ -117,15 +133,12 @@ export function createSandNormalTexture(mapResolution) {
 }
 
 export function createSandRoughnessTexture(mapResolution) {
-  return _sandTexture(
+  return _texture(
     mapResolution,
     mapResolution,
     (ctx, width, height) => {
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, '#b2b2b2');
-      gradient.addColorStop(1, '#f2f2f2');
-
-      ctx.fillStyle = gradient;
+      // Base uniforme: o gradiente anterior não fechava na emenda do tile.
+      ctx.fillStyle = '#d6d6d6';
       ctx.fillRect(0, 0, width, height);
 
       _seededNoise(ctx, width, height, 1024, ['#ffffff', '#cccccc', '#e6e6e6', '#b3b3b3'], 0.15, 0x5a11f);

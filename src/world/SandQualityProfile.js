@@ -1,9 +1,51 @@
-const PROFILES = {
-  low: Object.freeze({ segments: 32, mapResolution: 128, deformationResolution: 128, anisotropy: 1, sparkles: false, receiveShadow: false, footstepVfx: false, gpuParticles: false, maxContactEmitters: 0 }),
-  medium: Object.freeze({ segments: 48, mapResolution: 256, deformationResolution: 192, anisotropy: 2, sparkles: false, receiveShadow: false, footstepVfx: true, gpuParticles: false, maxContactEmitters: 2 }),
-  high: Object.freeze({ segments: 64, mapResolution: 256, deformationResolution: 256, anisotropy: 2, sparkles: true, receiveShadow: true, footstepVfx: true, gpuParticles: false, maxContactEmitters: 4 }),
-};
+const PROFILES = Object.assign(Object.create(null), {
+  low: Object.freeze({
+    geometrySegments: Object.freeze({ x: 96, z: 72 }),
+    mapResolution: 128,
+    deformationResolution: Object.freeze({ width: 256, height: 192 }),
+    childFootprintEnabled: false,
+    anisotropy: 1,
+    shaderCost: 'low',
+    sparkles: false,
+    receiveShadow: false,
+    ambientParticles: false,
+    footstepVfx: false,
+    gpuParticles: false,
+    maxBrushesPerFrame: 32,
+    maxContactEmitters: 0,
+  }),
+  medium: Object.freeze({
+    geometrySegments: Object.freeze({ x: 160, z: 120 }),
+    mapResolution: 256,
+    deformationResolution: Object.freeze({ width: 384, height: 288 }),
+    childFootprintEnabled: false,
+    anisotropy: 2,
+    shaderCost: 'medium',
+    sparkles: false,
+    receiveShadow: false,
+    ambientParticles: true,
+    footstepVfx: true,
+    gpuParticles: false,
+    maxBrushesPerFrame: 64,
+    maxContactEmitters: 2,
+  }),
+  high: Object.freeze({
+    geometrySegments: Object.freeze({ x: 240, z: 180 }),
+    mapResolution: 256,
+    deformationResolution: Object.freeze({ width: 512, height: 384 }),
+    childFootprintEnabled: true,
+    anisotropy: 2,
+    shaderCost: 'high',
+    sparkles: true,
+    receiveShadow: true,
+    ambientParticles: true,
+    footstepVfx: true,
+    gpuParticles: false,
+    maxBrushesPerFrame: 96,
+    maxContactEmitters: 4,
+  }),
+});
 
 export function getSandQuality(name = 'high') {
-  return PROFILES[name] || PROFILES.high;
+  return (Object.hasOwn(PROFILES, name) ? PROFILES[name] : null) || PROFILES.high;
 }

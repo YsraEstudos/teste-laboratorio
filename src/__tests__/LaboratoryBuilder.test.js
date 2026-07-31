@@ -51,6 +51,18 @@ describe('LaboratoryBuilder.dispose', () => {
     expect(builder.doorSystem.disposed).toBe(true);
     expect(builder.testObjectSystem.disposed).toBe(true);
     expect(builder.testObjects).toHaveLength(0);
+    expect(builder.sandFootstepSystem.disposed).toBe(true);
+    expect(builder.sandFootstepSystem.getStats().registered).toBe(0);
+  });
+
+  it('creates a footstep system with player and wind-child actors registered', () => {
+    const scene = new THREE.Scene();
+    const builder = new LaboratoryBuilder(scene);
+    const stats = builder.sandFootstepSystem.getStats();
+    expect(stats.registered).toBe(2);
+    expect(builder.sandFootstepSystem.hasDetailedFootprints('player')).toBe(true);
+    expect(builder.sandFootstepSystem.hasDetailedFootprints('wind-child')).toBe(true);
+    builder.dispose();
   });
 
   it('keeps real area lights within the startup render budget', () => {

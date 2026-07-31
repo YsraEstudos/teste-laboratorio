@@ -168,6 +168,7 @@ export class TacMapRenderer {
       ctx.font = '700 12px Rajdhani, Arial, sans-serif';
       ctx.fillStyle = '#54f08c';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText('WIND CHILD', 0, 26);
 
       ctx.restore();
@@ -207,6 +208,7 @@ export class TacMapRenderer {
       ctx.font = '700 13px Rajdhani, Arial, sans-serif';
       ctx.fillStyle = '#49d7e8';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText('VOCÊ (JOGADOR)', 0, -18);
 
       ctx.restore();

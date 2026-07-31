@@ -426,7 +426,7 @@ export class PerformanceProfiler {
           </div>
           <div class="reason-desc">${d.desc}</div>
         </div>
-      `
+      `,
         )
         .join('');
     }
@@ -474,7 +474,8 @@ export class PerformanceProfiler {
       elGcStatus.textContent = ratio > 0.85 ? 'Atenção (Heap Cheio)' : 'Excelente (Sem vazamento)';
     }
 
-    if (elBrowser) elBrowser.textContent = navigator.userAgent.includes('Edg') ? 'Microsoft Edge (Chromium)' : 'Navegador Chromium';
+    if (elBrowser)
+      elBrowser.textContent = navigator.userAgent.includes('Edg') ? 'Microsoft Edge (Chromium)' : 'Navegador Chromium';
     if (elWebglVer) elWebglVer.textContent = 'WebGL 2.0 (High Precision)';
     if (elScreenRes) elScreenRes.textContent = `${window.innerWidth}x${window.innerHeight}`;
     if (elPixelRatio) elPixelRatio.textContent = `${window.devicePixelRatio || 1}x`;
@@ -530,16 +531,33 @@ export class PerformanceProfiler {
       });
   }
 
-  toggle() {
-    this.visible = !this.visible;
-    if (this.visible) {
-      this.container.classList.remove('collapsed');
-    } else {
-      this.container.classList.add('collapsed');
+  /**
+   * Immediately shows/hides the profiler and gates all metric collection.
+   * Idempotent: repeated calls never duplicate DOM nodes or listeners.
+   * @param {boolean} visible
+   */
+  setVisible(visible) {
+    const next = Boolean(visible);
+    if (this.container) {
+      this.container.classList.toggle('collapsed', !next);
     }
+    if (!next) {
+      this.closeModal();
+    } else if (!this.visible) {
+      // Resuming after a hidden period: reset the frame baseline and history
+      // so the first visible frame does not report a giant spike.
+      this.lastFrameTime = performance.now();
+      this.frameHistory.fill(this.targetFps > 0 ? 1000 / this.targetFps : 8.33);
+    }
+    this.visible = next;
+  }
+
+  toggle() {
+    this.setVisible(!this.visible);
   }
 
   startFrame(now) {
+    if (!this.visible) return;
     this.frameTimeMs = now - this.lastFrameTime;
     this.lastFrameTime = now;
 
@@ -548,18 +566,22 @@ export class PerformanceProfiler {
   }
 
   startCPU() {
+    if (!this.visible) return;
     this.cpuStartTime = performance.now();
   }
 
   endCPU() {
+    if (!this.visible) return;
     this.cpuTimeMs = performance.now() - this.cpuStartTime;
   }
 
   startGPU() {
+    if (!this.visible) return;
     this.gpuStartTime = performance.now();
   }
 
   endGPU() {
+    if (!this.visible) return;
     this.gpuTimeMs = performance.now() - this.gpuStartTime;
   }
 
@@ -657,9 +679,11 @@ export class PerformanceProfiler {
       const x = i * barW;
       const y = h - barHeight;
 
-      if (ft <= 9.1) { // >= ~110 FPS
+      if (ft <= 9.1) {
+        // >= ~110 FPS
         ctx.fillStyle = '#54f08c';
-      } else if (ft <= 16.7) { // >= 60 FPS
+      } else if (ft <= 16.7) {
+        // >= 60 FPS
         ctx.fillStyle = '#ffd36d';
       } else {
         ctx.fillStyle = '#f07170';

@@ -5,11 +5,14 @@ import { DoorSystem } from './DoorSystem.js';
 import { TestObjectSystem } from './TestObjectSystem.js';
 import { SandTerrainSystem } from './SandTerrainSystem.js';
 import { GPUComputeSandSystem } from './GPUComputeSandSystem.js';
+import { SandContactSystem } from './SandContactSystem.js';
+import { SandFootstepSystem } from './SandFootstepSystem.js';
 
 const MAX_REAL_AREA_LIGHTS = 8;
+const EMPTY_POSITIONS = [];
 
 export class LaboratoryBuilder {
-  constructor(scene, renderer = null) {
+  constructor(scene, renderer = null, options = {}) {
     this.scene = scene;
     this.root = new THREE.Group();
     this.ownedGeometries = new Set();
@@ -28,8 +31,14 @@ export class LaboratoryBuilder {
     this.testObjectSystem = new TestObjectSystem();
     this.testObjects = this.testObjectSystem.objects;
     this.time = 0;
-    this.sandTerrainSystem = new SandTerrainSystem(this.root, { renderer });
-    this.gpuSandSystem = new GPUComputeSandSystem(this.scene);
+    this.sandTerrainSystem = new SandTerrainSystem(this.root, {
+      renderer,
+      quality: options?.quality ?? 'high',
+    });
+    this.gpuSandSystem = new GPUComputeSandSystem(renderer, this.scene, {
+      enabled: this.sandTerrainSystem.profile.gpuParticles,
+      quality: this.sandTerrainSystem.quality,
+    });
 
     this._boxBuffers = new Map();
 
@@ -46,9 +55,53 @@ export class LaboratoryBuilder {
     this.dynamicColliders = this.doorSystem.getDynamicColliders();
     this.navigationColliders = [...this.colliders, ...this.dynamicColliders];
     this.rooms = ROOMS;
-    
-    // Tracking for footprints
-    this.lastFootprintPositions = new Map();
+
+    this.sandVFX = null;
+    this.contactActorIds = ['player', 'wind-child', 'actor-1', 'actor-2', 'actor-3'];
+    this.sandContactSystem = new SandContactSystem({
+      maxActors: 24,
+      maxBrushesPerFrame: this.sandTerrainSystem.profile.maxBrushesPerFrame,
+      onContact: (x, z, radius, depth, berm, compression, yaw, elongation, edge, source) => {
+        const accepted = this.sandTerrainSystem.brush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
+        if (accepted) this.sandVFX?.triggerSandFootstepAt?.(x, z);
+        void source;
+        return accepted;
+      },
+    });
+    this.testObjectSystem.setContactSystem(this.sandContactSystem);
+
+    // Individual alternating footprints for the player and the Wind Child.
+    this.sandFootstepSystem = new SandFootstepSystem({
+      maxActors: 24,
+      onFootprint: (x, z, yaw, footprintOptions) => {
+        return this.sandTerrainSystem.applyFootprint(x, z, yaw, footprintOptions);
+      },
+    });
+    this._actors = null;
+    this.sandFootstepSystem.registerActor('player', {
+      footprintProfile: 'player',
+      width: 0.15,
+      length: 0.29,
+      minStepDistance: 0.2,
+      leftOffset: (out) => {
+        const anchor = this._actors?.player?.leftFootAnchor;
+        out.x = anchor?.x ?? 0;
+        out.z = anchor?.z ?? 0;
+      },
+      rightOffset: (out) => {
+        const anchor = this._actors?.player?.rightFootAnchor;
+        out.x = anchor?.x ?? 0;
+        out.z = anchor?.z ?? 0;
+      },
+    });
+    this.sandFootstepSystem.registerActor('wind-child', {
+      footprintProfile: 'child',
+      width: 0.1,
+      length: 0.16,
+      minStepDistance: 0.5,
+      leftOffset: { x: -0.05, z: 0 },
+      rightOffset: { x: 0.05, z: 0 },
+    });
   }
 
   _ownGeometry(geometry) {
@@ -290,7 +343,14 @@ export class LaboratoryBuilder {
     if (!this._boxBuffers) this._boxBuffers = new Map();
     if (!this._boxBuffers.has(material)) this._boxBuffers.set(material, []);
     this._boxBuffers.get(material).push({
-      width, height, depth, x, y, z, rotationY, collider,
+      width,
+      height,
+      depth,
+      x,
+      y,
+      z,
+      rotationY,
+      collider,
     });
 
     if (collider) {
@@ -300,10 +360,7 @@ export class LaboratoryBuilder {
         dummy.scale.set(width, height, depth);
         dummy.rotation.y = rotationY;
         dummy.updateMatrix();
-        const bbox = new THREE.Box3(
-          new THREE.Vector3(-0.5, -0.5, -0.5),
-          new THREE.Vector3(0.5, 0.5, 0.5),
-        );
+        const bbox = new THREE.Box3(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5));
         bbox.applyMatrix4(dummy.matrix);
         this.colliders.push(bbox);
       } else {
@@ -313,9 +370,7 @@ export class LaboratoryBuilder {
         const maxY = y + height / 2;
         const minZ = z - depth / 2;
         const maxZ = z + depth / 2;
-        this.colliders.push(
-          new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)),
-        );
+        this.colliders.push(new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)));
       }
     }
     return null;
@@ -379,7 +434,7 @@ export class LaboratoryBuilder {
 
   _addLightPanel(x, z, width = 2.1, depth = 0.48, color = 0xffefd0, intensity = 4.5) {
     const panel = this._addBox(width, 0.06, depth, x, 4.02, z, this.materials.panel, false);
-    
+
     // Mantém apenas um conjunto pequeno de luzes reais; os painéis continuam emissivos.
     if (this.realAreaLightCount < MAX_REAL_AREA_LIGHTS) {
       const rectLight = new THREE.RectAreaLight(color, intensity, width, depth);
@@ -1192,8 +1247,6 @@ export class LaboratoryBuilder {
     this._addPointLight(0, 3.8, -55, 0xffb74d, 12, 22);
   }
 
-
-
   _buildAtmosphere() {
     const emblem = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.06, 8, 48), this.materials.cyan);
     emblem.rotation.x = Math.PI / 2;
@@ -1225,7 +1278,31 @@ export class LaboratoryBuilder {
     }
   }
 
-  update(delta, playerPos = null, additionalPositions = [], windSystem = null, sandVFX = null) {
+  setSandVFX(sandVFX) {
+    this.sandVFX = sandVFX;
+    this.sandFootstepSystem?.setSandVFX?.(sandVFX);
+  }
+
+  triggerSandBlast(origin, power = 1) {
+    if (this.disposed || !origin || !Number.isFinite(power)) return false;
+    const safePower = Math.max(0, power);
+    const radius = Math.min(3, 0.8 + safePower * 0.15);
+    const depth = Math.min(0.2, 0.04 + safePower * 0.015);
+    const accepted = this.sandTerrainSystem.brush(origin.x, origin.z, radius, depth, depth * 0.4, 0.35);
+    if (accepted) this.sandVFX?.triggerSandBlastAt?.(origin.x, origin.z, safePower);
+    return accepted;
+  }
+
+  /**
+   * @param {number} delta
+   * @param {{x: number, z: number}|null} playerPos
+   * @param {{x: number, z: number}[]} [additionalPositions]
+   * @param {object|null} [windSystem]
+   * @param {{player?: object, windChild?: object}|null} [actors] - optional
+   *   actor controllers exposing model.rotation.y, animPhase and foot anchors
+   *   for detailed footprint placement
+   */
+  update(delta, playerPos = null, additionalPositions = EMPTY_POSITIONS, windSystem = null, actors = null) {
     this.time += delta;
     for (const mesh of this.waterMeshes) {
       if (mesh.material.map) {
@@ -1234,36 +1311,46 @@ export class LaboratoryBuilder {
       }
     }
 
+    this._actors = actors ?? null;
+
+    // Detailed alternating footprints (player + Wind Child) replace the
+    // generic contact brushing for those actors; everything else stays on
+    // the contact system (de-dup guaranteed by the dispatch below).
+    this.sandContactSystem.beginFrame();
+    this.sandFootstepSystem.beginFrame();
+    if (playerPos) {
+      if (this.sandFootstepSystem.hasDetailedFootprints('player')) {
+        const player = this._actors?.player;
+        const yaw = player?.model?.rotation?.y ?? 0;
+        const phase = player ? player.animPhase / (2 * Math.PI) : null;
+        this.sandFootstepSystem.updateActor('player', playerPos, yaw, delta, phase);
+      } else {
+        this.sandContactSystem.updateActor('player', playerPos, delta);
+      }
+    }
+    for (let i = 0; i < additionalPositions.length && i < this.contactActorIds.length; i += 1) {
+      if (i === 0) {
+        if (this.sandFootstepSystem.hasDetailedFootprints('wind-child')) {
+          const child = this._actors?.windChild;
+          const yaw = child?.model?.rotation?.y ?? 0;
+          this.sandFootstepSystem.updateActor('wind-child', additionalPositions[i], yaw, delta, null);
+        } else {
+          this.sandContactSystem.updateWake('wind-child', additionalPositions[i], delta);
+        }
+      } else {
+        this.sandContactSystem.updateActor(this.contactActorIds[i], additionalPositions[i], delta);
+      }
+    }
+
     this.sandTerrainSystem.update(delta, this.time, playerPos, additionalPositions);
-    
+
     const windChildPos = additionalPositions.length > 0 ? additionalPositions[0] : null;
     this.gpuSandSystem.update(delta, this.time, playerPos, windChildPos);
-    
+
     this.testObjectSystem.update(delta, windSystem, this.sandTerrainSystem);
 
     if (playerPos) {
       this.doorSystem.update(delta, playerPos, additionalPositions);
-
-      const positionsToTrack = [{ id: 'player', pos: playerPos }];
-      additionalPositions.forEach((pos, i) => positionsToTrack.push({ id: `add_${i}`, pos }));
-
-      for (const { id, pos } of positionsToTrack) {
-        if (pos.z >= -64 && pos.z <= -46 && pos.x >= -12 && pos.x <= 12) {
-          const lastPos = this.lastFootprintPositions.get(id);
-          
-          if (!lastPos || lastPos.distanceTo(pos) > 0.35) {
-            this.sandTerrainSystem.addFootprint(pos.x, pos.z, 0.35, 0.12);
-            if (sandVFX) {
-              sandVFX.triggerSandFootstep(pos);
-            }
-            if (!lastPos) {
-              this.lastFootprintPositions.set(id, pos.clone());
-            } else {
-              lastPos.copy(pos);
-            }
-          }
-        }
-      }
     }
   }
 
@@ -1281,6 +1368,8 @@ export class LaboratoryBuilder {
     this.disposed = true;
     this.doorSystem.dispose();
     this.testObjectSystem.dispose();
+    this.sandContactSystem?.dispose?.();
+    this.sandFootstepSystem?.dispose?.();
     this.sandTerrainSystem?.dispose?.();
     this.gpuSandSystem?.dispose?.();
     this.root.removeFromParent();

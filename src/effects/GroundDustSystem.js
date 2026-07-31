@@ -14,6 +14,7 @@ export class GroundDustSystem {
     this.scene = scene;
     this.vfxManager = vfxManager;
     this.disposed = false;
+    this.activeCount = 0;
 
     // Ground Dust Layer Motes
     const count = 120;
@@ -56,7 +57,7 @@ export class GroundDustSystem {
 
   /**
    * Called when a Wind Blast is released to lift ground dust into a 3D swirling cloud.
-   * 
+   *
    * @param {THREE.Vector3} origin Blast origin
    * @param {THREE.Vector3} direction Blast direction
    * @param {number} power Blast power
@@ -66,6 +67,7 @@ export class GroundDustSystem {
 
     const positions = this.dustMesh.geometry.attributes.position.array;
     const v = this.velocities;
+    let touched = false;
 
     for (let i = 0; i < positions.length / 3; i++) {
       const px = positions[i * 3];
@@ -75,6 +77,7 @@ export class GroundDustSystem {
 
       // If dust is within wind blast range (~12m)
       if (distSq < 144) {
+        touched = true;
         const dist = Math.sqrt(distSq);
         const impulseStrength = Math.max(0, 1 - dist / 12) * (3.5 + power * 0.8);
 
@@ -84,6 +87,7 @@ export class GroundDustSystem {
         v[i * 3 + 2] += direction.z * impulseStrength + (Math.random() - 0.5) * 1.5;
       }
     }
+    if (touched) this.activeCount = Math.max(this.activeCount, 1);
   }
 
   /**
@@ -92,13 +96,16 @@ export class GroundDustSystem {
    */
   update(delta) {
     if (this.disposed || !this.dustMesh) return;
+    if (this.activeCount === 0) return;
 
     const positions = this.dustMesh.geometry.attributes.position.array;
     const v = this.velocities;
     let needsUpdate = false;
+    let activeCount = 0;
 
     for (let i = 0; i < positions.length / 3; i++) {
       if (Math.abs(v[i * 3]) > 0.001 || Math.abs(v[i * 3 + 1]) > 0.001 || Math.abs(v[i * 3 + 2]) > 0.001) {
+        activeCount += 1;
         needsUpdate = true;
 
         // Apply velocity
@@ -143,6 +150,7 @@ export class GroundDustSystem {
     if (needsUpdate) {
       this.dustMesh.geometry.attributes.position.needsUpdate = true;
     }
+    this.activeCount = activeCount;
   }
 
   dispose() {

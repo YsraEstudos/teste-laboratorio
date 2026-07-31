@@ -79,10 +79,17 @@ export function createSectorNode(sector, index, totalCount, tokens = RADIAL_MENU
 
   const labelDiv = document.createElement('div');
   labelDiv.className = 'radial-label-content';
-  labelDiv.innerHTML = `
-    <span class="sector-icon">${sector.icon}</span>
-    <span class="sector-title">${sector.title}</span>
-  `;
+
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'sector-icon';
+  iconSpan.textContent = sector.icon;
+
+  const titleSpan = document.createElement('span');
+  titleSpan.className = 'sector-title';
+  titleSpan.textContent = sector.title;
+
+  labelDiv.appendChild(iconSpan);
+  labelDiv.appendChild(titleSpan);
   foreignObj.appendChild(labelDiv);
 
   g.appendChild(path);
@@ -93,9 +100,17 @@ export function createSectorNode(sector, index, totalCount, tokens = RADIAL_MENU
   }
   if (handlers.onLeave) {
     g.addEventListener('mouseleave', () => handlers.onLeave(g));
+    g.addEventListener('blur', () => handlers.onLeave(g));
   }
-  if (handlers.onFocus) {
-    g.addEventListener('focus', () => handlers.onFocus(index));
+  if (handlers.onFocus || handlers.onHover) {
+    g.addEventListener('focus', () => {
+      if (handlers.onHover) {
+        handlers.onHover(sector, g);
+      }
+      if (handlers.onFocus) {
+        handlers.onFocus(index);
+      }
+    });
   }
   if (handlers.onClick) {
     g.addEventListener('click', (e) => {
@@ -155,7 +170,7 @@ export function buildRadialMenuDOM(sectors, menuInstance, tokens = RADIAL_MENU_T
 
   const powerSelector = document.createElement('div');
   powerSelector.className = 'power-selector-ring hidden';
-  let powerHtml = '<div class="power-title">NÍVEL DE PODER (1-10)</div><div class="power-buttons">';
+  let powerHtml = `<div class="power-title">NÍVEL DE PODER (${tokens.powerLevelMin}-${tokens.powerLevelMax})</div><div class="power-buttons">`;
   for (let i = tokens.powerLevelMin; i <= tokens.powerLevelMax; i++) {
     powerHtml += `<button class="power-btn" data-level="${i}">${i}</button>`;
   }

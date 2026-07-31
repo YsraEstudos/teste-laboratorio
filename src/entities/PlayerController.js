@@ -46,6 +46,11 @@ export class PlayerController {
     this._raycaster = new THREE.Raycaster();
     this._cameraOffset = new THREE.Vector3(0, 27, 14);
 
+    // World-space foot anchors updated every frame from the animated soles,
+    // used by the sand footstep system to place alternating footprints.
+    this.leftFootAnchor = new THREE.Vector3();
+    this.rightFootAnchor = new THREE.Vector3();
+
     this.disposed = false;
     this._buildCharacter();
     this.select();
@@ -207,6 +212,7 @@ export class PlayerController {
 
     this.leftKnee.add(leftCalf, leftBoot, leftSole);
     this.leftHip.add(leftThigh, this.leftKnee);
+    this.leftSole = leftSole;
 
     // Right Leg
     this.rightHip = new THREE.Group();
@@ -226,6 +232,7 @@ export class PlayerController {
 
     this.rightKnee.add(rightCalf, rightBoot, rightSole);
     this.rightHip.add(rightThigh, this.rightKnee);
+    this.rightSole = rightSole;
 
     this.pelvis.add(this.leftHip, this.rightHip);
     this.body.add(this.pelvis);
@@ -458,6 +465,15 @@ export class PlayerController {
     this._cameraDesired.copy(this._cameraTarget).add(this._cameraOffset);
     this.camera.position.lerp(this._cameraDesired, followBlend);
     this.camera.lookAt(this._cameraTarget);
+
+    this._updateFootAnchors();
+  }
+
+  _updateFootAnchors() {
+    if (!this.model || !this.leftSole || !this.rightSole) return;
+    this.model.updateMatrixWorld(true);
+    this.leftSole.getWorldPosition(this.leftFootAnchor);
+    this.rightSole.getWorldPosition(this.rightFootAnchor);
   }
 
   _animateCharacter(delta, speed) {

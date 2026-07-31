@@ -64,6 +64,11 @@ export class WindChild {
     this._navigationStart = new THREE.Vector3();
     this._navigationAABB = new THREE.Box3();
 
+    // World-space foot anchors updated every frame from the boot meshes,
+    // used by the sand footstep system to place alternating footprints.
+    this.leftFootAnchor = new THREE.Vector3();
+    this.rightFootAnchor = new THREE.Vector3();
+
     // Scene Graph Root
     this.model = new THREE.Group();
     this.model.name = 'WindChild';
@@ -365,6 +370,7 @@ export class WindChild {
     const leftBoot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.16), bootMat);
     leftBoot.position.set(0, -0.26, 0.02);
     this.leftLegPivot.add(leftBoot);
+    this.leftBoot = leftBoot;
 
     // Right Leg
     this.rightLegPivot = new THREE.Group();
@@ -378,6 +384,7 @@ export class WindChild {
     const rightBoot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.16), bootMat);
     rightBoot.position.set(0, -0.26, 0.02);
     this.rightLegPivot.add(rightBoot);
+    this.rightBoot = rightBoot;
   }
 
   // ==========================================
@@ -589,6 +596,15 @@ export class WindChild {
 
     // 5. Update Wind Aura & Particles
     this._updateAuraParticles(delta, animSpeed);
+
+    this._updateFootAnchors();
+  }
+
+  _updateFootAnchors() {
+    if (!this.model || !this.leftBoot || !this.rightBoot) return;
+    this.model.updateMatrixWorld(true);
+    this.leftBoot.getWorldPosition(this.leftFootAnchor);
+    this.rightBoot.getWorldPosition(this.rightFootAnchor);
   }
 
   _ensureNavigationScratch() {
@@ -835,7 +851,8 @@ export class WindChild {
     this.leftArmPivot.rotation.y = THREE.MathUtils.lerp(0, 0.2, w);
     this.leftArmPivot.rotation.z = THREE.MathUtils.lerp(idleLeftRotZ, -stage1ArmRotZ, w);
 
-    this.rightArmPivot.rotation.x = THREE.MathUtils.lerp(idleRightRotX, stage1ArmRotX, w) + this.rightHandTremble.x * 2.0;
+    this.rightArmPivot.rotation.x =
+      THREE.MathUtils.lerp(idleRightRotX, stage1ArmRotX, w) + this.rightHandTremble.x * 2.0;
     this.rightArmPivot.rotation.y = THREE.MathUtils.lerp(0, -0.2, w);
     this.rightArmPivot.rotation.z = THREE.MathUtils.lerp(idleRightRotZ, stage1ArmRotZ, w);
 
