@@ -32,6 +32,7 @@ export class PerformanceProfiler {
     this.gpuStartTime = 0;
     this.accumulatedCpuTime = 0;
     this.accumulatedGpuTime = 0;
+    this.lastUiUpdate = 0;
 
     this._detectHardware();
     this._createDOM();
@@ -597,10 +598,13 @@ export class PerformanceProfiler {
       this.totalHeapMB = (performance.memory.totalJSHeapSize / 1048576).toFixed(1);
     }
 
-    this._updateUI();
-    this._renderSparkline();
+    const nowMs = performance.now();
+    if (nowMs - (this.lastUiUpdate || 0) >= 100) {
+      this._updateUI();
+      this._renderSparkline();
+      this.lastUiUpdate = nowMs;
+    }
     if (this.isModalOpen) {
-      const nowMs = performance.now();
       if (nowMs - (this.lastModalUpdate || 0) > 600) {
         this._updateModalData();
         this.lastModalUpdate = nowMs;

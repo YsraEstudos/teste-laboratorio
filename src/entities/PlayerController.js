@@ -46,9 +46,11 @@ export class PlayerController {
     this._raycaster = new THREE.Raycaster();
     this._cameraOffset = new THREE.Vector3(0, 27, 14);
 
+    this.disposed = false;
     this._buildCharacter();
     this.select();
-    this.input.onWheel = (event) => this._onWheel(event);
+    this._boundOnWheel = (event) => this._onWheel(event);
+    this.input.onWheel = this._boundOnWheel;
     this._setCameraImmediately();
   }
 
@@ -624,5 +626,36 @@ export class PlayerController {
   _setAABB(pos) {
     this._playerAABB.min.set(pos.x - this.radius, 0, pos.z - this.radius);
     this._playerAABB.max.set(pos.x + this.radius, this.height, pos.z + this.radius);
+  }
+
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    if (this.input && this.input.onWheel === this._boundOnWheel) {
+      this.input.onWheel = null;
+    }
+
+    if (this.scene) {
+      if (this.model) this.scene.remove(this.model);
+      if (this.destinationMarker) this.scene.remove(this.destinationMarker);
+    }
+
+    const disposeObject = (obj) => {
+      if (!obj) return;
+      obj.traverse?.((child) => {
+        if (child.isMesh) {
+          child.geometry?.dispose?.();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat?.dispose?.());
+          } else {
+            child.material?.dispose?.();
+          }
+        }
+      });
+    };
+
+    disposeObject(this.model);
+    disposeObject(this.destinationMarker);
   }
 }

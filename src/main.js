@@ -25,7 +25,7 @@ import { isLabDebugEnabled } from './engine/LabDebug.js';
 
 const LAB_DEBUG_ENABLED = isLabDebugEnabled({
   isDevelopmentOrTest: import.meta.env.DEV || import.meta.env.MODE === 'e2e',
-  optIn: import.meta.env.VITE_LAB_DEBUG === 'true',
+  optIn: import.meta.env.VITE_LAB_DEBUG === 'true' || import.meta.env.MODE === 'e2e',
 });
 
 export class Game {
@@ -60,13 +60,15 @@ export class Game {
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
     this.vfxManager = new VFXManager(this.renderer.scene);
-    this.sandVFX = new SandVFXSystem(this.renderer.scene);
-    this.groundDust = new GroundDustSystem(this.renderer.scene);
+    this.sandVFX = new SandVFXSystem(this.renderer.scene, this.vfxManager, { quality: 'high' });
+    this.lab.setSandVFX?.(this.sandVFX);
+    this.groundDust = new GroundDustSystem(this.renderer.scene, this.vfxManager);
 
     // Player Character
     this.player = new PlayerController(this.renderer.camera, this.input, this.renderer.scene);
     this.player.setNavigation(this.navigation);
     this._windForce = new THREE.Vector3();
+    this._flashlightForward = new THREE.Vector3();
 
     // Flashlight System
     this.flashlight = new FlashlightSystem(this.renderer.scene);
@@ -91,13 +93,14 @@ export class Game {
     });
 
     // Wind Particle FX
-    this.windFX = new WindParticleSystem(this.renderer.scene);
+    this.windFX = new WindParticleSystem(this.renderer.scene, this.vfxManager);
 
     // Wind Child (Subject with Wind Powers) - Spawns in Entrance room near Player
     this.windChild = new WindChild(this.renderer.scene);
     this.windChild.setNavigation(this.navigation, this.lab.dynamicColliders);
     this.windChild.position.set(3.2, 0, 4.5);
     if (this.windChild.model) this.windChild.model.position.copy(this.windChild.position);
+    this._sandAdditionalPositions = [this.windChild.position];
     this.windAbility = new WindAbilitySystem({
       owner: this.windChild,
       onRelease: (snapshot) => this._applyWindBlast(snapshot),
@@ -109,6 +112,7 @@ export class Game {
     this.hud = new HUD(this);
 
     this._bindEvents(canvas);
+    this.renderer.applySoftwareFallback();
 
     this._loop = this._loop.bind(this);
     this.animationId = requestAnimationFrame(this._loop);
@@ -127,19 +131,28 @@ export class Game {
         this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         this._raycaster.setFromCamera(this._pointer, this.renderer.camera);
 
-        const intersects = this._raycaster.intersectObjects(this.renderer.scene.children, true);
+        const testObjects = Array.isArray(this.lab.testObjects)
+          ? this.lab.testObjects
+          : this.lab.testObjects?.objects || [];
+        const targets = [];
+        for (const obj of testObjects) {
+          if (obj.mesh) targets.push(obj.mesh);
+          else if (obj instanceof THREE.Object3D) targets.push(obj);
+        }
+        if (this.windChild?.model) targets.push(this.windChild.model);
+
+        const intersects = this._raycaster.intersectObjects(targets, true);
         let targetObj = null;
         if (intersects.length > 0) {
           const hit = intersects[0].object;
-          const testObjects = Array.isArray(this.lab.testObjects) ? this.lab.testObjects : (this.lab.testObjects?.objects || []);
           for (const obj of testObjects) {
-             if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh) {
-                targetObj = obj;
-                break;
-             }
+            if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh || hit === obj) {
+              targetObj = obj;
+              break;
+            }
           }
         }
-        
+
         this.triggerWindBlastOnObjects(targetObj);
         return;
       }
@@ -241,7 +254,7 @@ export class Game {
     let targetObj = targetObject;
     const testObjects = Array.isArray(this.lab.testObjects)
       ? this.lab.testObjects
-      : (this.lab.testObjects?.objects || []);
+      : this.lab.testObjects?.objects || [];
 
     if (!targetObj) {
       // Find closest test object to Wind Child
@@ -309,10 +322,8 @@ export class Game {
     // Visual and physical responses receive the same immutable blast event.
     this.windFX.triggerWindBlast(origin, target, powerLevel, impulse);
     this.wind.applyImpulse(impulse, [targetObject]);
-    
-    if (this.lab?.gpuSandSystem) {
-      this.lab.gpuSandSystem.triggerSandBlast(origin, target, effectivePower);
-    }
+    this.groundDust?.triggerDustBlast?.(origin, pushVector, effectivePower);
+    this.lab?.triggerSandBlast?.(origin, effectivePower);
   }
 
   /**
@@ -335,9 +346,9 @@ export class Game {
       this.player.update(delta, this.lab.colliders, this.lab.doors);
 
       if (this.flashlight && this.player) {
-        const angle = (this.player.model && this.player.model.rotation) ? this.player.model.rotation.y : 0;
-        const forward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
-        this.flashlight.update(this.player.position, forward);
+        const angle = this.player.model && this.player.model.rotation ? this.player.model.rotation.y : 0;
+        this._flashlightForward.set(Math.sin(angle), 0, Math.cos(angle));
+        this.flashlight.update(this.player.position, this._flashlightForward);
       }
 
       this.windAbility.update(delta);
@@ -347,7 +358,7 @@ export class Game {
       this.sandVFX?.update?.(delta);
       this.groundDust?.update?.(delta);
       this.objectHighlight.update(delta);
-      this.lab.update(delta, this.player.position, [this.windChild.position], this.wind);
+      this.lab.update(delta, this.player.position, this._sandAdditionalPositions, this.wind);
       this.hud.update(delta);
       this.profiler.endCPU();
     }
@@ -379,6 +390,7 @@ export class Game {
     }
 
     if (this._unsubscribeStore) this._unsubscribeStore();
+    this.player?.dispose?.();
     this.flashlight?.dispose?.();
     this.tacMap?.destroy?.();
     this.radialMenu?.destroy?.();
