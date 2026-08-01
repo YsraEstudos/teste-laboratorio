@@ -162,12 +162,18 @@ export class SandDeformationField {
       return false;
     }
 
+    // Apply to the CPU authority immediately so physics sees the contact in
+    // the same tick. A brush whose footprint misses the arena entirely is
+    // rejected: it returns false, does not consume the per-frame budget, and
+    // never reaches the GPU queue, so callers (VFX, contact counting) treat
+    // false as "no field change".
+    const overlaps = this._applyBrush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
+    if (!overlaps) {
+      this.stats.droppedBrushes += 1;
+      return false;
+    }
     this.brushCount += 1;
     this.stats.acceptedBrushes += 1;
-
-    // Apply to the CPU authority immediately so physics sees the contact in
-    // the same tick. flush() controls publication and texture upload.
-    this._applyBrush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
     if (this.simulation) this.simulation.queueBrush(x, z, radius, depth, berm, compression, yaw, elongation, edge);
     return true;
   }
@@ -181,10 +187,17 @@ export class SandDeformationField {
     const worldHeight = this.maxZ - this.minZ;
     const radiusX = radius * Math.max(elongation, 0.1);
     const radiusZ = radius;
-    const unclampedMinPx = Math.floor(((x - radiusX - this.minX) / worldWidth) * (this.width - 1));
-    const unclampedMaxPx = Math.ceil(((x + radiusX - this.minX) / worldWidth) * (this.width - 1));
-    const unclampedMinPy = Math.floor(((z - radiusZ - this.minZ) / worldHeight) * (this.height - 1));
-    const unclampedMaxPy = Math.ceil(((z + radiusZ - this.minZ) / worldHeight) * (this.height - 1));
+    const cos = Math.cos(yaw);
+    const sin = Math.sin(yaw);
+    // The rotated ellipse's world-aligned bounding box is wider than the
+    // unrotated ±radiusX/±radiusZ extents whenever yaw !== 0; without these
+    // half-extents the loop clips the elongated ends of the stamp.
+    const extentX = Math.hypot(radiusX * cos, radiusZ * sin);
+    const extentZ = Math.hypot(radiusX * sin, radiusZ * cos);
+    const unclampedMinPx = Math.floor(((x - extentX - this.minX) / worldWidth) * (this.width - 1));
+    const unclampedMaxPx = Math.ceil(((x + extentX - this.minX) / worldWidth) * (this.width - 1));
+    const unclampedMinPy = Math.floor(((z - extentZ - this.minZ) / worldHeight) * (this.height - 1));
+    const unclampedMaxPy = Math.ceil(((z + extentZ - this.minZ) / worldHeight) * (this.height - 1));
 
     if (unclampedMaxPx < 0 || unclampedMinPx >= this.width || unclampedMaxPy < 0 || unclampedMinPy >= this.height) {
       return false;
@@ -194,8 +207,6 @@ export class SandDeformationField {
     const maxPx = clamp(unclampedMaxPx, 0, this.width - 1);
     const minPy = clamp(unclampedMinPy, 0, this.height - 1);
     const maxPy = clamp(unclampedMaxPy, 0, this.height - 1);
-    const cos = Math.cos(yaw);
-    const sin = Math.sin(yaw);
     const edgePower = 1 + clamp(edge, 0, 1);
     let changed = false;
 
@@ -259,7 +270,10 @@ export class SandDeformationField {
       }
     }
     this.pendingDirty ||= changed;
-    return changed;
+    // The return value signals whether the brush reached the arena (bbox
+    // overlap), not whether a cell changed: an in-bounds brush that only
+    // reinforces existing marks must still be accepted by brush().
+    return true;
   }
 
   _markActiveTile(px, py) {

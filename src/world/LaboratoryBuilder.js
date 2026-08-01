@@ -99,7 +99,10 @@ export class LaboratoryBuilder {
       },
     });
     this.sandFootstepSystem.registerActor('wind-child', {
-      footprintProfile: 'child',
+      // Honor the quality profile: only 'high' enables detailed child
+      // footprints. low/medium register a generic profile so the update
+      // dispatch routes the Wind Child to the cheaper single wake brush.
+      footprintProfile: this.sandTerrainSystem.profile.childFootprintEnabled ? 'child' : 'generic',
       width: 0.1,
       length: 0.16,
       minStepDistance: 0.5,

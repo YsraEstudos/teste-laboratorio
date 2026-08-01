@@ -65,6 +65,20 @@ describe('LaboratoryBuilder.dispose', () => {
     builder.dispose();
   });
 
+  it('enables detailed wind-child footprints only on the high quality profile', () => {
+    const high = new LaboratoryBuilder(new THREE.Scene());
+    expect(high.sandFootstepSystem.hasDetailedFootprints('wind-child')).toBe(true);
+    high.dispose();
+
+    const medium = new LaboratoryBuilder(new THREE.Scene(), null, { quality: 'medium' });
+    expect(medium.sandFootstepSystem.hasDetailedFootprints('wind-child')).toBe(false);
+    medium.dispose();
+
+    const low = new LaboratoryBuilder(new THREE.Scene(), null, { quality: 'low' });
+    expect(low.sandFootstepSystem.hasDetailedFootprints('wind-child')).toBe(false);
+    low.dispose();
+  });
+
   it('keeps real area lights within the startup render budget', () => {
     vi.spyOn(TextureGenerator, '_texture').mockImplementation(() => new THREE.Texture());
 
