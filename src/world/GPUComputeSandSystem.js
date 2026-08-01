@@ -10,25 +10,29 @@ export class GPUComputeSandSystem {
    * @param {THREE.WebGLRenderer} renderer - O renderizador WebGL.
    * @param {THREE.Scene} scene - A cena na qual o sistema será renderizado.
    */
-  constructor(renderer, scene) {
+  constructor(renderer, scene, { enabled = false, quality = 'high' } = {}) {
     this.renderer = renderer;
     this.scene = scene;
+    this.disposed = false;
+    const supportsFloatTargets = !renderer?.extensions || renderer.extensions.has?.('EXT_color_buffer_float');
 
-    // Suporte Headless (ex: testes no Node.js sem canvas/WebGL)
-    if (!this.renderer || !this.renderer.capabilities) {
+    // This path is experimental. A renderer alone is never permission to
+    // allocate hundreds of thousands of particles or render targets.
+    if (!enabled || !this.renderer?.capabilities?.isWebGL2 || !supportsFloatTargets) {
       this.isHeadless = true;
       return;
     }
 
     this.isHeadless = false;
-    this.WIDTH = 512;
-    this.PARTICLES = this.WIDTH * this.WIDTH; // 262.144 partículas
+    this.WIDTH = quality === 'low' ? 64 : 128;
+    this.PARTICLES = this.WIDTH * this.WIDTH;
 
     this._initGPGPU();
     this._initParticles();
 
     this.time = 0;
     this.spheres = [];
+    this.sphereData = Array.from({ length: 16 }, () => new THREE.Vector4());
   }
 
   _initGPGPU() {
@@ -196,12 +200,15 @@ export class GPUComputeSandSystem {
     this.renderer.render(rtScene, rtCamera);
     this.renderer.setRenderTarget(null);
 
+    texture.dispose();
     rtMaterial.dispose();
+    rtScene.children[0].geometry.dispose();
   }
 
   _initParticles() {
     // Geometria Instanciada
     const baseGeometry = new THREE.PlaneGeometry(0.04, 0.04);
+    this.baseGeometry = baseGeometry;
 
     this.particleGeometry = new THREE.InstancedBufferGeometry();
     this.particleGeometry.index = baseGeometry.index;
@@ -302,7 +309,7 @@ export class GPUComputeSandSystem {
    * @param {THREE.Vector3} windChildPos - Posição do "wind child" ou outra entidade importante.
    * @param {Array<{position: THREE.Vector3, radius: number}>} spheres - Objetos esféricos dinâmicos para colisão.
    */
-  update(delta, time, playerPos, windChildPos, spheres = []) {
+  update(delta, time, playerPos, windChildPos, spheres = null) {
     if (this.isHeadless) return;
 
     // Atualiza uniformes do shader de simulação
@@ -311,19 +318,20 @@ export class GPUComputeSandSystem {
     this.simulationMaterial.uniforms.uDeltaTime.value = Math.min(delta, 0.05); // Cap delta time for stability
 
     // Atualiza esferas de colisão (limite 16)
-    const sphereData = [];
-
+    const sphereData = this.sphereData;
+    let sphereCount = 0;
     // Jogador e filho do vento podem ser adicionados como esferas
-    if (playerPos) sphereData.push(new THREE.Vector4(playerPos.x, playerPos.y, playerPos.z, 0.5));
-    if (windChildPos) sphereData.push(new THREE.Vector4(windChildPos.x, windChildPos.y, windChildPos.z, 0.4));
+    if (playerPos) sphereData[sphereCount++].set(playerPos.x, playerPos.y, playerPos.z, 0.5);
+    if (windChildPos && sphereCount < 16)
+      sphereData[sphereCount++].set(windChildPos.x, windChildPos.y, windChildPos.z, 0.4);
 
-    for (let i = 0; i < spheres.length && sphereData.length < 16; i++) {
+    for (let i = 0; spheres && i < spheres.length && sphereCount < 16; i++) {
       const s = spheres[i];
-      sphereData.push(new THREE.Vector4(s.position.x, s.position.y, s.position.z, s.radius));
+      sphereData[sphereCount++].set(s.position.x, s.position.y, s.position.z, s.radius);
     }
 
     this.simulationMaterial.uniforms.uSpheres.value = sphereData;
-    this.simulationMaterial.uniforms.uSphereCount.value = sphereData.length;
+    this.simulationMaterial.uniforms.uSphereCount.value = sphereCount;
 
     // Decai gradualmente a força da rajada (Blast)
     if (this.simulationMaterial.uniforms.uSandBlastPower.value > 0) {
@@ -370,12 +378,14 @@ export class GPUComputeSandSystem {
   }
 
   dispose() {
-    if (this.isHeadless) return;
+    if (this.disposed || this.isHeadless) return;
+    this.disposed = true;
     if (this.particleMesh) {
       this.scene.remove(this.particleMesh);
       if (this.particleMesh.geometry) this.particleMesh.geometry.dispose();
       if (this.particleMesh.material) this.particleMesh.material.dispose();
     }
+    this.baseGeometry?.dispose?.();
     if (this.rt1) this.rt1.dispose();
     if (this.rt2) this.rt2.dispose();
   }

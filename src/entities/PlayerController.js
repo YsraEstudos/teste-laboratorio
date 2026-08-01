@@ -46,9 +46,16 @@ export class PlayerController {
     this._raycaster = new THREE.Raycaster();
     this._cameraOffset = new THREE.Vector3(0, 27, 14);
 
+    // World-space foot anchors updated every frame from the animated soles,
+    // used by the sand footstep system to place alternating footprints.
+    this.leftFootAnchor = new THREE.Vector3();
+    this.rightFootAnchor = new THREE.Vector3();
+
+    this.disposed = false;
     this._buildCharacter();
     this.select();
-    this.input.onWheel = (event) => this._onWheel(event);
+    this._boundOnWheel = (event) => this._onWheel(event);
+    this.input.onWheel = this._boundOnWheel;
     this._setCameraImmediately();
   }
 
@@ -205,6 +212,7 @@ export class PlayerController {
 
     this.leftKnee.add(leftCalf, leftBoot, leftSole);
     this.leftHip.add(leftThigh, this.leftKnee);
+    this.leftSole = leftSole;
 
     // Right Leg
     this.rightHip = new THREE.Group();
@@ -224,6 +232,7 @@ export class PlayerController {
 
     this.rightKnee.add(rightCalf, rightBoot, rightSole);
     this.rightHip.add(rightThigh, this.rightKnee);
+    this.rightSole = rightSole;
 
     this.pelvis.add(this.leftHip, this.rightHip);
     this.body.add(this.pelvis);
@@ -456,6 +465,15 @@ export class PlayerController {
     this._cameraDesired.copy(this._cameraTarget).add(this._cameraOffset);
     this.camera.position.lerp(this._cameraDesired, followBlend);
     this.camera.lookAt(this._cameraTarget);
+
+    this._updateFootAnchors();
+  }
+
+  _updateFootAnchors() {
+    if (!this.model || !this.leftSole || !this.rightSole) return;
+    this.model.updateMatrixWorld(true);
+    this.leftSole.getWorldPosition(this.leftFootAnchor);
+    this.rightSole.getWorldPosition(this.rightFootAnchor);
   }
 
   _animateCharacter(delta, speed) {
@@ -624,5 +642,36 @@ export class PlayerController {
   _setAABB(pos) {
     this._playerAABB.min.set(pos.x - this.radius, 0, pos.z - this.radius);
     this._playerAABB.max.set(pos.x + this.radius, this.height, pos.z + this.radius);
+  }
+
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    if (this.input && this.input.onWheel === this._boundOnWheel) {
+      this.input.onWheel = null;
+    }
+
+    if (this.scene) {
+      if (this.model) this.scene.remove(this.model);
+      if (this.destinationMarker) this.scene.remove(this.destinationMarker);
+    }
+
+    const disposeObject = (obj) => {
+      if (!obj) return;
+      obj.traverse?.((child) => {
+        if (child.isMesh) {
+          child.geometry?.dispose?.();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat?.dispose?.());
+          } else {
+            child.material?.dispose?.();
+          }
+        }
+      });
+    };
+
+    disposeObject(this.model);
+    disposeObject(this.destinationMarker);
   }
 }

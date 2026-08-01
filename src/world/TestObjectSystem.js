@@ -21,8 +21,12 @@ export class TestObjectSystem {
       maxZ: bounds.maxZ ?? -46.5,
     };
     this.sandTime = 0;
-    this.lastFootprints = new Map();
+    this.nextContactId = 0;
+    this.contactSystem = null;
     this.disposed = false;
+    for (let index = 0; index < this.objects.length; index += 1) {
+      this._prepareObject(this.objects[index]);
+    }
   }
 
   /**
@@ -30,8 +34,18 @@ export class TestObjectSystem {
    */
   addObject(object) {
     if (this.disposed) return object;
+    this._prepareObject(object);
     this.objects.push(object);
     return object;
+  }
+
+  _prepareObject(object) {
+    if (object.sandContactId === undefined) object.sandContactId = this.nextContactId++;
+    object.footprintState ||= { x: 0, z: 0, time: 0, initialized: false };
+  }
+
+  setContactSystem(contactSystem) {
+    this.contactSystem = contactSystem;
   }
 
   /**
@@ -58,8 +72,7 @@ export class TestObjectSystem {
       let isHeavy = false;
 
       if (sandSystem) {
-        groundY = sandSystem.getElevationAt(obj.mesh.position.x, obj.mesh.position.z);
-        groundY -= sandSystem.sampleWorld?.(obj.mesh.position.x, obj.mesh.position.z)?.depth ?? 0;
+        groundY = sandSystem.getElevationAt?.(obj.mesh.position.x, obj.mesh.position.z) ?? groundY;
 
         if (obj.type === 'folha_papel' || obj.type === 'folha_arvore') {
           // Objetos leves ficam nivelados na elevação exata da duna + 0.01
@@ -86,14 +99,14 @@ export class TestObjectSystem {
           obj.mesh.position.y = groundY;
           obj.velocity.y = 0;
           if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
-            this._stampHeavyObject(obj, sandSystem, depthSink);
+            this._stampHeavyObject(obj, sandSystem, depthSink, delta);
           }
         }
       } else {
         obj.mesh.position.y = groundY;
         obj.velocity.y = 0;
         if (isHeavy && sandSystem && horizontalSpeedSq > 0.01) {
-          this._stampHeavyObject(obj, sandSystem, depthSink);
+          this._stampHeavyObject(obj, sandSystem, depthSink, delta);
         }
       }
 
@@ -143,19 +156,37 @@ export class TestObjectSystem {
     if (object.velocity.y < 2.0) object.velocity.y += 1.5;
   }
 
-  _stampHeavyObject(object, sandSystem, depthSink) {
-    const previous = this.lastFootprints.get(object);
-    const distance = previous
-      ? Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z)
-      : 0;
-    if (distance < 0.35 && this.sandTime - (previous?.time ?? 0) < 0.12) return;
+  _stampHeavyObject(object, sandSystem, depthSink, delta) {
+    if (this.contactSystem) {
+      this.contactSystem.updateActor(
+        object.sandContactId,
+        object.mesh.position,
+        delta,
+        0.4,
+        depthSink,
+        depthSink * 0.25,
+        0.75,
+        'object',
+      );
+      return;
+    }
+
+    const previous = object.footprintState;
+    if (previous?.initialized) {
+      const distance = Math.hypot(object.mesh.position.x - previous.x, object.mesh.position.z - previous.z);
+      if (distance < 0.35 && this.sandTime - previous.time < 0.12) return;
+    }
+
     const brush = sandSystem.brush ?? sandSystem.addFootprint;
     brush?.call(sandSystem, object.mesh.position.x, object.mesh.position.z, 0.4, depthSink, depthSink * 0.25, 0.75);
-    this.lastFootprints.set(object, {
+
+    const updatedState = {
       x: object.mesh.position.x,
       z: object.mesh.position.z,
       time: this.sandTime,
-    });
+      initialized: true,
+    };
+    object.footprintState = updatedState;
   }
 
   dispose() {

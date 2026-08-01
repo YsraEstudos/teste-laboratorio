@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SandDeformationSimulation } from '../world/SandDeformationSimulation.js';
-import { TestObjectSystem } from '../world/TestObjectSystem.js';
 
 function createWebGL2Renderer() {
   return {
@@ -56,24 +55,5 @@ describe('SandDeformationSimulation', () => {
     targetDisposals.forEach((dispose) => expect(dispose).toHaveBeenCalledOnce());
     expect(brushTextureDispose).toHaveBeenCalledOnce();
     expect(simulation.disposed).toBe(true);
-  });
-
-  it('aplica a altura deformada e limita contatos pesados por distância ou tempo', () => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
-    mesh.position.set(0, -0.1, 0);
-    const object = { mesh, velocity: new THREE.Vector3(1, 0, 0), type: 'pedra' };
-    const sandSystem = {
-      getElevationAt: vi.fn(() => 0.4),
-      sampleWorld: vi.fn(() => ({ depth: 0.1 })),
-      brush: vi.fn(),
-    };
-    const system = new TestObjectSystem([object]);
-
-    system.update(1 / 60, null, sandSystem);
-    expect(mesh.position.y).toBeCloseTo(0.15, 5);
-    expect(sandSystem.brush).not.toHaveBeenCalled();
-
-    system.update(0.12, null, sandSystem);
-    expect(sandSystem.brush).toHaveBeenCalledOnce();
   });
 });

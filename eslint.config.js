@@ -30,6 +30,14 @@ export default [
     },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+  },
+  {
     files: ['src/__tests__/**/*.js', 'e2e/**/*.js', '*.config.js', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',

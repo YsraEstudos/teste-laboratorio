@@ -14,11 +14,26 @@ export function percentile(values, quantile) {
   }
 
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * quantile) - 1)];
+  const rawIndex = Math.ceil(sorted.length * quantile) - 1;
+  const index = Math.max(0, Math.min(sorted.length - 1, rawIndex));
+  return sorted[index];
 }
 
-function waitForAnimationFrame() {
-  return new Promise((resolve) => requestAnimationFrame(resolve));
+function waitForAnimationFrame(timeoutMs = 1000) {
+  return new Promise((resolve, reject) => {
+    let frameId;
+    const timerId = setTimeout(() => {
+      if (typeof cancelAnimationFrame === 'function' && frameId !== undefined) {
+        cancelAnimationFrame(frameId);
+      }
+      reject(new Error('Animation frame timed out'));
+    }, timeoutMs);
+
+    frameId = requestAnimationFrame((timestamp) => {
+      clearTimeout(timerId);
+      resolve(timestamp);
+    });
+  });
 }
 
 /**
@@ -36,13 +51,18 @@ export async function collectSandSample({ game, frames = 120 }) {
 
   const renderer = game.renderer.renderer;
   const gl = renderer.getContext();
+  const sand = game.lab?.sandTerrainSystem;
+  const contacts = game.lab?.sandContactSystem;
+  const sandVfx = game.sandVFX;
   const frameTimes = [];
   let previousFrameAt = performance.now();
 
-  for (let index = 0; index < frames; index += 1) {
+  for (let index = 0; index <= frames; index += 1) {
     await waitForAnimationFrame();
     const now = performance.now();
-    frameTimes.push(now - previousFrameAt);
+    if (index > 0) {
+      frameTimes.push(now - previousFrameAt);
+    }
     previousFrameAt = now;
   }
 
@@ -55,5 +75,8 @@ export async function collectSandSample({ game, frames = 120 }) {
     textures: renderer.info.memory.textures,
     geometries: renderer.info.memory.geometries,
     contextLost: gl.isContextLost(),
+    sand: sand?.getDebugStats?.() || null,
+    sandContacts: contacts?.getStats?.() || null,
+    sandVfx: sandVfx?.getStats?.() || null,
   };
 }

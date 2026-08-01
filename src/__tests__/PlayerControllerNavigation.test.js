@@ -49,4 +49,20 @@ describe('PlayerController structured navigation result', () => {
     expect(controller.destination).toBeNull();
     expect(controller.destinationMarker.visible).toBe(false);
   });
+
+  it('disposes resources and unbinds onWheel listener', () => {
+    const input = {
+      onWheel: null,
+      canvas: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) },
+    };
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera();
+    const controller = new PlayerController(camera, input, scene);
+
+    expect(input.onWheel).toBeTypeOf('function');
+    controller.dispose();
+    expect(input.onWheel).toBeNull();
+    expect(controller.disposed).toBe(true);
+    expect(() => controller.dispose()).not.toThrow();
+  });
 });

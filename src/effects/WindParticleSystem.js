@@ -8,19 +8,11 @@ export class WindParticleSystem {
   constructor(scene, vfxManager) {
     this.scene = scene;
     this.vfxManager = vfxManager;
-    this.sandVFX = null;
     this._audioContext = null;
-  }
-
-  setSandVFX(sandVFX) {
-    this.sandVFX = sandVFX;
   }
 
   // eslint-disable-next-line no-unused-vars
   triggerWindBlast(origin, target, powerLevel = 1, _impulse = null) {
-    if (this.sandVFX) {
-      this.sandVFX.triggerSandBlast(origin, target, powerLevel);
-    }
     if (!this.vfxManager) return;
 
     // Play dynamic ability effects

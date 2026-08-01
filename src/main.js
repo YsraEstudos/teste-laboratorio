@@ -22,10 +22,12 @@ import { SandVFXSystem } from './effects/SandVFXSystem.js';
 import { GroundDustSystem } from './effects/GroundDustSystem.js';
 import { collectSandSample } from './engine/PerformanceStats.js';
 import { isLabDebugEnabled } from './engine/LabDebug.js';
+import { loadSettings } from './config/GameSettings.js';
+import { mountReactApp } from './ui/mountReactApp.js';
 
 const LAB_DEBUG_ENABLED = isLabDebugEnabled({
   isDevelopmentOrTest: import.meta.env.DEV || import.meta.env.MODE === 'e2e',
-  optIn: import.meta.env.VITE_LAB_DEBUG === 'true',
+  optIn: import.meta.env.VITE_LAB_DEBUG === 'true' || import.meta.env.MODE === 'e2e',
 });
 
 export class Game {
@@ -44,11 +46,16 @@ export class Game {
     this._pointer = new THREE.Vector2();
     this._raycaster = new THREE.Raycaster();
 
+    // Settings are loaded before any world system is created: quality only
+    // applies on this boot, while the FPS visibility applies immediately.
+    const settings = loadSettings();
+
     // Performance Telemetry Profiler (Edge & AMD GPU/CPU)
     this.profiler = new PerformanceProfiler(this);
+    this.profiler.setVisible?.(settings.showFps);
 
     // World & Navigation
-    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer);
+    this.lab = new LaboratoryBuilder(this.renderer.scene, this.renderer.renderer, { quality: settings.quality });
     if (LAB_DEBUG_ENABLED) {
       window.__LAB_DEBUG__ = {
         game: this,
@@ -59,14 +66,16 @@ export class Game {
     this.navigation = new NavigationGrid(this.lab.colliders);
     this.wind = new WindSystem(this.renderer.scene, this.renderer.camera, this.lab);
     this.objectHighlight = new ObjectHighlightSystem();
-    this.vfxManager = new VFXManager(this.renderer.scene);
-    this.sandVFX = new SandVFXSystem(this.renderer.scene);
-    this.groundDust = new GroundDustSystem(this.renderer.scene);
+    this.vfxManager = new VFXManager(this.renderer.scene, { quality: settings.quality });
+    this.sandVFX = new SandVFXSystem(this.renderer.scene, this.vfxManager, { quality: settings.quality });
+    this.lab.setSandVFX?.(this.sandVFX);
+    this.groundDust = new GroundDustSystem(this.renderer.scene, this.vfxManager);
 
     // Player Character
     this.player = new PlayerController(this.renderer.camera, this.input, this.renderer.scene);
     this.player.setNavigation(this.navigation);
     this._windForce = new THREE.Vector3();
+    this._flashlightForward = new THREE.Vector3();
 
     // Flashlight System
     this.flashlight = new FlashlightSystem(this.renderer.scene);
@@ -83,21 +92,42 @@ export class Game {
       gameStore.setState({ isFlashlightOn: nextState });
     };
 
+    let settingsWasOpen = false;
+    let wasPlayingBeforeSettings = false;
     this._unsubscribeStore = gameStore.subscribe((state) => {
       if (this.flashlight) {
         this.flashlight.setEquipped(state.isFlashlightEquipped);
         this.flashlight.setEnabled(state.isFlashlightOn);
       }
+
+      // Settings panel pause/resume: opening pauses a running session and
+      // closing it resumes ONLY a session that was running before opening.
+      if (state.settingsOpen && !settingsWasOpen) {
+        wasPlayingBeforeSettings = this.isPlaying;
+        if (this.isPlaying) this.pause();
+      } else if (!state.settingsOpen && settingsWasOpen) {
+        if (wasPlayingBeforeSettings) this.resume();
+        wasPlayingBeforeSettings = false;
+      }
+      settingsWasOpen = state.settingsOpen;
+
+      // FPS visibility is applied immediately.
+      if (typeof state.showFps === 'boolean') {
+        this.profiler?.setVisible?.(state.showFps);
+      }
     });
 
     // Wind Particle FX
-    this.windFX = new WindParticleSystem(this.renderer.scene);
+    this.windFX = new WindParticleSystem(this.renderer.scene, this.vfxManager);
 
     // Wind Child (Subject with Wind Powers) - Spawns in Entrance room near Player
     this.windChild = new WindChild(this.renderer.scene);
     this.windChild.setNavigation(this.navigation, this.lab.dynamicColliders);
     this.windChild.position.set(3.2, 0, 4.5);
     if (this.windChild.model) this.windChild.model.position.copy(this.windChild.position);
+    this._sandAdditionalPositions = [this.windChild.position];
+    // Persistent (allocation-free) bundle consumed by the footstep dispatch.
+    this._sandActors = { player: this.player, windChild: this.windChild };
     this.windAbility = new WindAbilitySystem({
       owner: this.windChild,
       onRelease: (snapshot) => this._applyWindBlast(snapshot),
@@ -109,6 +139,7 @@ export class Game {
     this.hud = new HUD(this);
 
     this._bindEvents(canvas);
+    this.renderer.applySoftwareFallback();
 
     this._loop = this._loop.bind(this);
     this.animationId = requestAnimationFrame(this._loop);
@@ -127,15 +158,22 @@ export class Game {
         this._pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         this._raycaster.setFromCamera(this._pointer, this.renderer.camera);
 
-        const intersects = this._raycaster.intersectObjects(this.renderer.scene.children, true);
+        const testObjects = Array.isArray(this.lab.testObjects)
+          ? this.lab.testObjects
+          : this.lab.testObjects?.objects || [];
+        const targets = [];
+        for (const obj of testObjects) {
+          if (obj.mesh) targets.push(obj.mesh);
+          else if (obj instanceof THREE.Object3D) targets.push(obj);
+        }
+        if (this.windChild?.model) targets.push(this.windChild.model);
+
+        const intersects = this._raycaster.intersectObjects(targets, true);
         let targetObj = null;
         if (intersects.length > 0) {
           const hit = intersects[0].object;
-          const testObjects = Array.isArray(this.lab.testObjects)
-            ? this.lab.testObjects
-            : this.lab.testObjects?.objects || [];
           for (const obj of testObjects) {
-            if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh) {
+            if (hit === obj.mesh || hit.parent === obj.mesh || hit.parent?.parent === obj.mesh || hit === obj) {
               targetObj = obj;
               break;
             }
@@ -311,10 +349,8 @@ export class Game {
     // Visual and physical responses receive the same immutable blast event.
     this.windFX.triggerWindBlast(origin, target, powerLevel, impulse);
     this.wind.applyImpulse(impulse, [targetObject]);
-
-    if (this.lab?.gpuSandSystem) {
-      this.lab.gpuSandSystem.triggerSandBlast(origin, target, effectivePower);
-    }
+    this.groundDust?.triggerDustBlast?.(origin, pushVector, effectivePower);
+    this.lab?.triggerSandBlast?.(origin, effectivePower);
   }
 
   /**
@@ -338,8 +374,8 @@ export class Game {
 
       if (this.flashlight && this.player) {
         const angle = this.player.model && this.player.model.rotation ? this.player.model.rotation.y : 0;
-        const forward = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
-        this.flashlight.update(this.player.position, forward);
+        this._flashlightForward.set(Math.sin(angle), 0, Math.cos(angle));
+        this.flashlight.update(this.player.position, this._flashlightForward);
       }
 
       this.windAbility.update(delta);
@@ -349,7 +385,7 @@ export class Game {
       this.sandVFX?.update?.(delta);
       this.groundDust?.update?.(delta);
       this.objectHighlight.update(delta);
-      this.lab.update(delta, this.player.position, [this.windChild.position], this.wind);
+      this.lab.update(delta, this.player.position, this._sandAdditionalPositions, this.wind, this._sandActors);
       this.hud.update(delta);
       this.profiler.endCPU();
     }
@@ -381,6 +417,7 @@ export class Game {
     }
 
     if (this._unsubscribeStore) this._unsubscribeStore();
+    this.player?.dispose?.();
     this.flashlight?.dispose?.();
     this.tacMap?.destroy?.();
     this.radialMenu?.destroy?.();
@@ -402,6 +439,7 @@ export class Game {
 
 function init() {
   new Game();
+  mountReactApp();
 }
 
 if (document.readyState === 'loading') {

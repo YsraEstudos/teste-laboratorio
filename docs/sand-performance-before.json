@@ -15,6 +15,7 @@
     "vertices": 16641,
     "triangles": 32768,
     "textureResolution": 512,
+    "textureResolutionNote": "Dimension (width and height in texels) of the square heightmap DataTexture used for sand deformation (512x512 grid).",
     "deformationBytes": 1048576,
     "footprintCount": 1,
     "lastUploadAt": 226029.20000000112

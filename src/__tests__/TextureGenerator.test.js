@@ -106,11 +106,19 @@ describe('TextureGenerator.acquireSandTextureSet', () => {
     expect(disposeAlbedo).toHaveBeenCalledOnce();
   });
 
-  it('gera mapas de areia com seed determinística sem Math.random por grão', () => {
+  it('limita o número de chamadas Math.random e isola entre chamadas', () => {
     const random = vi.spyOn(Math, 'random');
-    const handle = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    const first = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
 
     expect(random.mock.calls.length).toBeLessThan(100);
-    handle.release();
+
+    // A aquisição é isolada: uma segunda chamada com a mesma qualidade reutiliza
+    // o conjunto em cache e não consome mais aleatoriedade global.
+    const second = TextureGenerator.acquireSandTextureSet({ quality: 'high' });
+    expect(random.mock.calls.length).toBeLessThan(100);
+    expect(second.albedo).toBe(first.albedo);
+
+    first.release();
+    second.release();
   });
 });

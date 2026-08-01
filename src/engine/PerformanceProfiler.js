@@ -32,6 +32,7 @@ export class PerformanceProfiler {
     this.gpuStartTime = 0;
     this.accumulatedCpuTime = 0;
     this.accumulatedGpuTime = 0;
+    this.lastUiUpdate = 0;
 
     this._detectHardware();
     this._createDOM();
@@ -530,16 +531,33 @@ export class PerformanceProfiler {
       });
   }
 
-  toggle() {
-    this.visible = !this.visible;
-    if (this.visible) {
-      this.container.classList.remove('collapsed');
-    } else {
-      this.container.classList.add('collapsed');
+  /**
+   * Immediately shows/hides the profiler and gates all metric collection.
+   * Idempotent: repeated calls never duplicate DOM nodes or listeners.
+   * @param {boolean} visible
+   */
+  setVisible(visible) {
+    const next = Boolean(visible);
+    if (this.container) {
+      this.container.classList.toggle('collapsed', !next);
     }
+    if (!next) {
+      this.closeModal();
+    } else if (!this.visible) {
+      // Resuming after a hidden period: reset the frame baseline and history
+      // so the first visible frame does not report a giant spike.
+      this.lastFrameTime = performance.now();
+      this.frameHistory.fill(this.targetFps > 0 ? 1000 / this.targetFps : 8.33);
+    }
+    this.visible = next;
+  }
+
+  toggle() {
+    this.setVisible(!this.visible);
   }
 
   startFrame(now) {
+    if (!this.visible) return;
     this.frameTimeMs = now - this.lastFrameTime;
     this.lastFrameTime = now;
 
@@ -548,18 +566,22 @@ export class PerformanceProfiler {
   }
 
   startCPU() {
+    if (!this.visible) return;
     this.cpuStartTime = performance.now();
   }
 
   endCPU() {
+    if (!this.visible) return;
     this.cpuTimeMs = performance.now() - this.cpuStartTime;
   }
 
   startGPU() {
+    if (!this.visible) return;
     this.gpuStartTime = performance.now();
   }
 
   endGPU() {
+    if (!this.visible) return;
     this.gpuTimeMs = performance.now() - this.gpuStartTime;
   }
 
@@ -598,10 +620,13 @@ export class PerformanceProfiler {
       this.totalHeapMB = (performance.memory.totalJSHeapSize / 1048576).toFixed(1);
     }
 
-    this._updateUI();
-    this._renderSparkline();
+    const nowMs = performance.now();
+    if (nowMs - (this.lastUiUpdate || 0) >= 100) {
+      this._updateUI();
+      this._renderSparkline();
+      this.lastUiUpdate = nowMs;
+    }
     if (this.isModalOpen) {
-      const nowMs = performance.now();
       if (nowMs - (this.lastModalUpdate || 0) > 600) {
         this._updateModalData();
         this.lastModalUpdate = nowMs;

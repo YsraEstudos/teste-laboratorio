@@ -1,6 +1,17 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../useGameStore.js';
 import { gameStore } from '../../state/gameStore.js';
+import { QUALITY_LEVELS } from '../../config/GameSettings.js';
+
+// Local display labels only; identifiers come from the shared QUALITY_LEVELS config
+// so newly added levels appear automatically and stay consistent with gameStore.setQuality.
+const QUALITY_LABELS = {
+  low: 'Baixo',
+  medium: 'Médio',
+  high: 'Alto',
+};
+
+const QUALITY_OPTIONS = QUALITY_LEVELS.map((level) => [level, QUALITY_LABELS[level] ?? level]);
 
 export function HUD() {
   const {
@@ -13,7 +24,55 @@ export function HUD() {
     isFlashlightEquipped,
     isFlashlightOn,
     items = [],
+    settingsOpen,
+    quality,
+    showFps,
+    settingsApplyMessage,
   } = useGameStore();
+
+  const settingsPanelRef = useRef(null);
+
+  // Escape closes the settings dialog; Tab cycles focus within it.
+  // Listeners exist only while the dialog is open.
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        gameStore.closeSettings();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const panel = settingsPanelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [settingsOpen]);
+
+  // Move focus into the dialog on open and restore it on close.
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const previouslyFocused = document.activeElement;
+    if (settingsPanelRef.current) settingsPanelRef.current.focus();
+    return () => {
+      if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+        previouslyFocused.focus();
+      }
+    };
+  }, [settingsOpen]);
 
   const toggleInventory = () => {
     gameStore.setState({ inventoryOpen: !inventoryOpen });
@@ -101,6 +160,40 @@ export function HUD() {
           }}
         >
           🔦 LANTERNA {isFlashlightOn ? '[ON]' : '[OFF]'} [F]
+        </button>
+
+        <button
+          onClick={() => gameStore.openSettings()}
+          aria-label="Configurações"
+          title="Configurações"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            backgroundColor: settingsOpen ? 'rgba(0, 240, 255, 0.9)' : 'rgba(15, 43, 62, 0.85)',
+            color: settingsOpen ? '#020810' : '#00f0ff',
+            border: '1px solid #00f0ff',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            boxShadow: '0 0 10px rgba(0, 240, 255, 0.2)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
         </button>
       </div>
 
@@ -282,6 +375,157 @@ export function HUD() {
               💡 Pressione a tecla <strong style={{ color: '#fff' }}>[I]</strong> para fechar ou{' '}
               <strong style={{ color: '#fff' }}>[F]</strong> para alternar a lanterna a qualquer momento no jogo.
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal Overlay */}
+      {settingsOpen && (
+        <div
+          onClick={(event) => {
+            if (event.target === event.currentTarget) gameStore.closeSettings();
+          }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(2, 8, 16, 0.75)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            pointerEvents: 'auto',
+          }}
+        >
+          <div
+            ref={settingsPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+            tabIndex={-1}
+            style={{
+              width: '420px',
+              maxWidth: '90vw',
+              backgroundColor: 'rgba(10, 25, 40, 0.97)',
+              border: '2px solid #00f0ff',
+              borderRadius: '16px',
+              padding: '24px',
+              color: '#fff',
+              fontFamily: 'Rajdhani, sans-serif',
+              boxShadow: '0 0 35px rgba(0, 240, 255, 0.35)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px',
+              outline: 'none',
+            }}
+          >
+            <div
+              id="settings-title"
+              style={{
+                fontSize: '20px',
+                fontWeight: 700,
+                color: '#00f0ff',
+                letterSpacing: '1px',
+                borderBottom: '1px solid rgba(0,240,255,0.3)',
+                paddingBottom: '12px',
+              }}
+            >
+              CONFIGURAÇÕES
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#76f5ff',
+                  letterSpacing: '0.5px',
+                  marginBottom: '2px',
+                }}
+              >
+                QUALIDADE GRÁFICA
+              </div>
+              {QUALITY_OPTIONS.map(([value, label]) => (
+                <label
+                  key={value}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: quality === value ? '#00f0ff' : '#d0e8f5',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="quality"
+                    value={value}
+                    checked={quality === value}
+                    onChange={() => gameStore.setQuality(value)}
+                    style={{ accentColor: '#00f0ff', width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 600,
+                color: '#d0e8f5',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showFps}
+                onChange={(event) => gameStore.setShowFps(event.target.checked)}
+                style={{ accentColor: '#00f0ff', width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Mostrar motor de FPS
+            </label>
+
+            {settingsApplyMessage && (
+              <div
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#76f5ff',
+                  textAlign: 'center',
+                  borderTop: '1px dashed rgba(0,240,255,0.2)',
+                  paddingTop: '10px',
+                }}
+              >
+                {settingsApplyMessage}
+              </div>
+            )}
+
+            <button
+              onClick={() => gameStore.closeSettings()}
+              style={{
+                alignSelf: 'flex-end',
+                backgroundColor: '#00f0ff',
+                color: '#020810',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '8px 22px',
+                fontFamily: 'Rajdhani, sans-serif',
+                fontSize: '15px',
+                fontWeight: 700,
+                letterSpacing: '1px',
+                cursor: 'pointer',
+                boxShadow: '0 0 12px rgba(0, 240, 255, 0.4)',
+                transition: 'all 0.2s',
+              }}
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}

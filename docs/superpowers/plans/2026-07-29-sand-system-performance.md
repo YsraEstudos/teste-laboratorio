@@ -6,6 +6,8 @@
 
 **Arquitetura:** separar a areia em quatro responsabilidades: perfil de qualidade, malha/material estático, campo de deformação e efeitos transitórios. A malha carregará mapas PBR compartilhados e baratos; a deformação usará um campo R8 pequeno e atualizações coalescidas; partículas/GPGPU ficarão condicionais e só serão ativadas depois de uma medição. Um único componente será dono do rastreamento de pegadas.
 
+**Referência técnica adotada:** o `Noniv/snowflow_demo` mantém uma deformação persistente e aditiva, recebe pés, wakes e efeitos por uma única operação `brush()`, atualiza um estado ping-pong sem readback por frame e usa a mesma altura para renderização e grounding. Neste projeto Three.js, a implementação equivalente será: WebGL2 em alta qualidade com dois render targets RGBA16F e um pass de simulação; fallback WebGL/R8 coalescido em média/baixa; brush staging pré-alocado; canais de depressão, berm e compactação; e um sampler CPU derivado/atualizado somente para colisões. A inspiração é arquitetural, não uma cópia de código.
+
 **Stack:** Three.js 0.185, WebGL 2/WebGL 1 fallback, Vite, Vitest, Playwright E2E, CanvasTexture/DataTexture, InstancedMesh e GLSL de MeshStandardMaterial.
 
 ## Restrições globais
@@ -13,7 +15,7 @@
 - Não reintroduzir EffectComposer, bloom ou outro pós-processamento sem comparação de frame time e cobertura visual.
 - Coletar baseline antes da primeira otimização e repetir com o mesmo viewport, DPR, navegador e GPU.
 - A meta obrigatória é estabilidade a 60 FPS e ausência de contextLost; 120 FPS é meta opcional.
-- A contribuição da areia deve ficar em até 1 draw call de terreno, 8.192 triângulos na alta e 65.536 bytes para o campo de deformação.
+- A contribuição da areia deve ficar em até 1 draw call de terreno e 8.192 triângulos na alta. O fallback R8 deve ficar em 65.536 bytes; o modo WebGL2 de altíssima qualidade pode usar dois RGBA16F de 256² somente se o baseline comprovar estabilidade e o orçamento de memória for reportado separadamente.
 - A alta usará mapas PBR de 256², salvo evidência de que resolução maior melhora a imagem sem romper o orçamento.
 - O GPGPU não será ativado por padrão enquanto não houver medição isolada.
 - Recursos criados pelo terreno terão proprietário explícito e serão liberados no dispose().
@@ -62,6 +64,7 @@ Aceitar somente se o contexto WebGL não for perdido, não houver exceções nã
 - Criar: e2e/sand.performance.spec.js
 - Criar: src/__tests__/SandPerformance.test.js
 - Criar: src/engine/PerformanceStats.js
+- Criar: docs/sand-performance-before.json
 - Modificar: src/main.js:28-100
 - Modificar: src/world/SandTerrainSystem.js:1-20
 
@@ -128,7 +131,7 @@ Salvar viewport, DPR, navegador, renderer WebGL, qualidade, draws, triângulos, 
 - [ ] Passo 6: Commitar somente o baseline.
 
 ~~~powershell
-git add scripts/sand-performance-baseline.mjs e2e/sand.performance.spec.js src/__tests__/SandPerformance.test.js src/main.js src/world/SandTerrainSystem.js docs/sand-performance-before.json
+git add scripts/sand-performance-baseline.mjs e2e/sand.performance.spec.js src/__tests__/SandPerformance.test.js src/engine/PerformanceStats.js src/main.js src/world/SandTerrainSystem.js docs/sand-performance-before.json
 git commit -m "test: add measurable sand performance baseline"
 ~~~
 
@@ -147,7 +150,7 @@ git commit -m "test: add measurable sand performance baseline"
 **Interfaces:**
 - getSandQuality(name = 'high') retorna configuração congelada com segments, mapResolution, deformationResolution, anisotropy, sparkles, receiveShadow, footstepVfx, gpuParticles e maxContactEmitters.
 - TextureGenerator.acquireSandTextureSet({ quality }) retorna { key, albedo, normal, roughness, release() } com referência compartilhada.
-- SandTerrainSystem recebe constructor(scene, { quality = high, textureSet = null } = {}) e libera a referência no dispose().
+- SandTerrainSystem recebe constructor(scene, { quality = 'high', textureSet = null } = {}) e libera a referência no dispose().
 
 - [ ] Passo 1: Escrever testes vermelhos de perfil e compartilhamento.
 
@@ -210,7 +213,7 @@ git commit -m "perf: share sand texture sets by quality"
 
 ---
 
-### Tarefa 3: Substituir Canvas 512² por campo de deformação R8 coalescido
+### Tarefa 3: Substituir Canvas 512² por campo persistente inspirado no Snowflow
 
 **Arquivos:**
 - Criar: src/world/SandDeformationField.js
@@ -218,13 +221,18 @@ git commit -m "perf: share sand texture sets by quality"
 - Modificar: src/world/SandTerrainSystem.js:20-50,232-280
 - Modificar: src/world/TestObjectSystem.js:34-110
 - Modificar: src/world/LaboratoryBuilder.js:1243-1275
+- Modificar: src/engine/Renderer.js:1-80
+- Modificar: src/main.js:40-55
+- Criar: src/world/SandDeformationSimulation.js
+- Criar: src/__tests__/SandDeformationSimulation.test.js
 
 **Interfaces:**
-- new SandDeformationField({ width, height, minX, maxX, minZ, maxZ, decayPerSecond, maxDepth }) cria Uint8Array.
-- field.stamp(x, z, radius, depth) aplica falloff, limita profundidade e marca dirty.
+- new SandDeformationField({ width, height, minX, maxX, minZ, maxZ, decayPerSecond, maxDepth, renderer, scene }) escolhe `gpuPingPong` somente em WebGL2 suportado e mantém fallback CPU R8.
+- field.brush(x, z, radius, depth, berm, compression, yaw, elongation, edge) escreve em staging pré-alocado; field.stamp(...) permanece como alias compatível para contatos simples.
 - field.advance(delta) decai em passos de no máximo 1/15 s, sem Math.random() e sem alocações.
 - field.consumeDirty() retorna true uma vez por lote.
-- SandTerrainSystem.depthTexture é THREE.DataTexture(field.data, width, height, THREE.RedFormat, THREE.UnsignedByteType).
+- O backend CPU expõe THREE.DataTexture R8; o backend WebGL2 expõe a textura RGBA16F ping-pong e executa um único pass que relaxa, espalha berm, aplica vento e splats.
+- field.sampleWorld(x, z) retorna { depth, berm, compression } da cópia CPU disponível para física; nenhum código de colisão reimplementa a função procedural do shader.
 
 - [ ] Passo 1: Escrever testes vermelhos.
 
@@ -249,25 +257,37 @@ it('coalesce stamps e decai no intervalo agendado', () => {
   field.advance(1 / 15);
   expect(Math.max(...field.data)).toBeLessThan(peak);
 });
+
+it('mantém depression, berm e compression no mesmo brush', () => {
+  const field = new SandDeformationField({ width: 32, height: 32, minX: -4, maxX: 4, minZ: -4, maxZ: 4, maxDepth: 0.2 });
+  field.brush(0, 0, 0.4, 0.12, 0.03, 0.8, Math.PI / 4, 1.6, 0.2);
+  const sample = field.sampleWorld(0, 0);
+  expect(sample.depth).toBeGreaterThan(0);
+  expect(sample.compression).toBeGreaterThan(0);
+});
 ~~~
 
-- [ ] Passo 2: Implementar algoritmo CPU.
+- [ ] Passo 2: Implementar brush staging compartilhado.
 
-Converter mundo para texel, iterar somente o bounding box do círculo e usar max(existing, falloff * depthByte). O falloff deve ser 1 - smoothstep(0, 1, distance / radius). Não criar CanvasGradient, strings rgba ou vetores Three dentro de stamp().
+Prealocar até 96 brushes por frame, com x/z/radius/elongation, yaw, depth/berm e compression/edge. Rejeitar brushes fora da janela; escrever somente números no typed array. Não criar CanvasGradient, strings rgba, objetos Three ou arrays por contato.
 
 - [ ] Passo 3: Integrar DataTexture R8.
 
 Remover depthCanvas, depthCtx e createRadialGradient. Criar DataTexture com filtro linear, ClampToEdgeWrapping e sem mipmaps. Marcar needsUpdate apenas quando consumeDirty() for verdadeiro. Em 256², o upload máximo fica em 64 KiB contra aproximadamente 1 MiB do Canvas RGBA 512².
 
-- [ ] Passo 4: Throttlar contatos físicos.
+- [ ] Passo 4: Implementar backend WebGL2 ping-pong para alta qualidade.
+
+Criar dois WebGLRenderTarget RGBA16F 256², sem mipmaps, e um pass fullscreen com canais depth/berm/compression/ice. O pass deve aplicar todos os brushes, relaxamento exponencial, slump da berm para a depressão e infill orientado pelo vento; trocar os targets sem readback. Limitar a atualização ao intervalo em que a câmera/player está na arena e aquecer os targets atrás do loading screen.
+
+- [ ] Passo 5: Throttlar contatos físicos.
 
 Em TestObjectSystem, manter lastFootprintAt e lastFootprintPosition por objeto. Só chamar addFootprint() após 0,35 m ou 120 ms. Em LaboratoryBuilder, coalescer player e Wind Child no mesmo lote antes de atualizar a textura.
 
-- [ ] Passo 5: Manter visual e física na mesma altura.
+- [ ] Passo 6: Manter visual e física na mesma altura.
 
 Adicionar sampleWorld(x, z) ao SandDeformationField e fazer TestObjectSystem usar getElevationAt(x, z) menos a profundidade do campo, com o mesmo clamp usado no shader. Corrigir a conversão do stamp para usar raioX = radius / (maxX - minX) e raioZ = radius / (maxZ - minZ), preservando uma pegada circular em metros. Na alta, derivar uma normal aproximada do campo com quatro amostras vizinhas; na média/baixa, manter a normal estática e usar apenas o escurecimento do imprint.
 
-- [ ] Passo 6: Validar.
+- [ ] Passo 7: Validar.
 
 ~~~powershell
 npm test -- src/__tests__/SandDeformationField.test.js src/__tests__/LaboratorySystems.test.js src/__tests__/LaboratoryBuilder.test.js
@@ -277,10 +297,10 @@ npm run test:e2e -- e2e/sand.performance.spec.js
 
 O E2E deve confirmar stamps limitados durante caminhada contínua, dispose único do campo e que a altura física de um objeto acompanha a amostra deformada dentro da tolerância de 1 cm.
 
-- [ ] Passo 7: Commitar.
+- [ ] Passo 8: Commitar.
 
 ~~~powershell
-git add src/world/SandDeformationField.js src/world/SandTerrainSystem.js src/world/TestObjectSystem.js src/world/LaboratoryBuilder.js src/__tests__
+git add src/world/SandDeformationField.js src/world/SandDeformationSimulation.js src/world/SandTerrainSystem.js src/world/TestObjectSystem.js src/world/LaboratoryBuilder.js src/engine/Renderer.js src/main.js src/__tests__/SandDeformationField.test.js src/__tests__/SandDeformationSimulation.test.js
 git commit -m "perf: replace canvas sand deformation with compact field"
 ~~~
 
@@ -386,7 +406,7 @@ it('não cria ParticleSystem novo a cada pegada', () => {
   const initial = manager.batchRenderer.systems?.length;
   vfx.triggerSandFootstep(new THREE.Vector3(0, 0, -55));
   vfx.triggerSandFootstep(new THREE.Vector3(0.5, 0, -55));
-  expect(manager.batchRenderer.systems?.length).toBeLessThanOrEqual(initial + 2);
+  expect(manager.batchRenderer.systems?.length).toBe(initial);
 });
 ~~~
 
@@ -413,7 +433,7 @@ npm run test:e2e -- e2e/laboratory.smoke.spec.js e2e/sand.performance.spec.js
 - [ ] Passo 6: Commitar.
 
 ~~~powershell
-git add src/main.js src/world/LaboratoryBuilder.js src/effects/SandVFXSystem.js src/effects/VFXManager.js src/__tests__
+git add src/main.js src/world/LaboratoryBuilder.js src/effects/SandVFXSystem.js src/effects/VFXManager.js src/effects/GroundDustSystem.js src/wind/WindParticleSystem.js src/__tests__/SandVFXSystem.test.js src/__tests__/helpers/gameHarness.js
 git commit -m "fix: pool sand contact effects and wire arena updates"
 ~~~
 
@@ -475,7 +495,7 @@ Esperado no modo padrão: zero render passes GPGPU, zero FBOs de areia e nenhum 
 - [ ] Passo 6: Commitar.
 
 ~~~powershell
-git add src/world/GPUComputeSandSystem.js src/world/LaboratoryBuilder.js src/main.js src/__tests__
+git add src/world/GPUComputeSandSystem.js src/world/LaboratoryBuilder.js src/main.js src/__tests__/GPUComputeSandSystem.test.js src/__tests__/helpers/webglHarness.js
 git commit -m "fix: make GPU sand simulation opt-in and bounded"
 ~~~
 
@@ -540,7 +560,7 @@ npm run test:e2e -- e2e/sand.performance.spec.js
 - [ ] Passo 6: Commitar.
 
 ~~~powershell
-git add src/engine/QualitySettings.js src/engine/QualityManager.js src/engine/Renderer.js src/entities/FlashlightSystem.js src/main.js src/engine/PerformanceProfiler.js src/__tests__
+git add src/engine/QualitySettings.js src/engine/QualityManager.js src/engine/Renderer.js src/entities/FlashlightSystem.js src/main.js src/engine/PerformanceProfiler.js src/__tests__/QualityManager.test.js src/__tests__/Renderer.test.js src/__tests__/GameLifecycle.test.js
 git commit -m "perf: adapt renderer quality to sand workload"
 ~~~
 
